@@ -1,0 +1,65 @@
+{
+  "cases": [
+    {
+      "id": "cbc-001",
+      "document_text": "COMPLETE BLOOD COUNT\nWBC 12.5 K/uL (H)\nHemoglobin 9.2 g/dL (L)\nHematocrit 28.5% (L)\nPlatelets 245 K/uL\nMCV 88 fL\nMCH 29 pg\nMCHC 33 g/dL",
+      "ground_truth": {
+        "type": "COMPLETE BLOOD COUNT",
+        "codes": ["D64.9"],
+        "key_findings": [
+          "Low hemoglobin (9.2 g/dL)",
+          "Elevated WBC (12.5 K/uL)",
+          "Low hematocrit (28.5%)"
+        ]
+      }
+    },
+    {
+      "id": "bmp-001",
+      "document_text": "BASIC METABOLIC PANEL\nSodium 138 mEq/L\nPotassium 6.1 mEq/L (H)\nChloride 102 mEq/L\nCO2 24 mEq/L\nGlucose 95 mg/dL\nBUN 28 mg/dL\nCreatinine 2.0 mg/dL (H)",
+      "ground_truth": {
+        "type": "BASIC METABOLIC PANEL",
+        "codes": ["E87.5"],
+        "key_findings": [
+          "Hyperkalemia (6.1 mEq/L)",
+          "Elevated creatinine (2.0 mg/dL)",
+          "Elevated BUN (28 mg/dL)"
+        ]
+      }
+    },
+    {
+      "id": "xray-001",
+      "document_text": "CHEST X-RAY REPORT\n\nIndication: Shortness of breath\n\nFindings:\nMild cardiomegaly\nNo acute pulmonary infiltrates\nNo pleural effusion\nNo pneumothorax\n\nImpression: Mild cardiomegaly, otherwise unremarkable chest X-ray",
+      "ground_truth": {
+        "type": "X-RAY",
+        "codes": ["I51.7"],
+        "key_findings": [
+          "Mild cardiomegaly"
+        ]
+      }
+    },
+    {
+      "id": "ct-001",
+      "document_text": "CT CHEST WITH CONTRAST\n\nClinical History: Evaluation for pulmonary embolism\n\nTechnique: Axial CT images through the chest with IV contrast\n\nFindings:\nNo evidence of pulmonary embolism\nMinor bilateral pleural effusions\nSmall mediastinal lymph nodes, likely reactive\nNo suspicious pulmonary nodules\n\nImpression: No pulmonary embolism. Minor bilateral pleural effusions.",
+      "ground_truth": {
+        "type": "CT",
+        "codes": [],
+        "key_findings": [
+          "No pulmonary embolism",
+          "Bilateral pleural effusions"
+        ]
+      }
+    },
+    {
+      "id": "clinical-note-001",
+      "document_text": "PROGRESS NOTE\n\nPatient: 65-year-old male\nChief Complaint: Follow-up diabetes and hypertension\n\nHistory of Present Illness:\nPatient presents for routine follow-up of type 2 diabetes and hypertension. Reports good adherence to medications. No recent hypoglycemic episodes. Home blood pressure readings range 120-135/75-85.\n\nPhysical Examination:\nVital Signs: BP 128/78, HR 72, Temp 98.6F\nGeneral: Well-appearing, no acute distress\nHeart: Regular rate and rhythm, no murmurs\nLungs: Clear to auscultation bilaterally\n\nAssessment and Plan:\n1. Type 2 diabetes - well controlled, continue metformin\n2. Hypertension - well controlled, continue lisinopril\n3. Recheck HbA1c in 3 months",
+      "ground_truth": {
+        "type": "CLINICAL NOTE",
+        "codes": [],
+        "key_findings": [
+          "Type 2 diabetes well controlled",
+          "Hypertension well controlled"
+        ]
+      }
+    }
+  ]
+}

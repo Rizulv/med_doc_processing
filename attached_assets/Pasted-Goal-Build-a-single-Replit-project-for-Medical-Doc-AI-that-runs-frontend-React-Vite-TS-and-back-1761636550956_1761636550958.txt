@@ -1,0 +1,259 @@
+Goal: Build a single Replit project for “Medical Doc AI” that runs frontend (React+Vite+TS) and backend (FastAPI) together, uses Anthropic Claude for classification / ICD-10 code extraction / summarization, stores metadata in SQLite, supports PDF/TXT upload and text extraction, ships real prompt files, and includes a tiny eval set. Replit has no Docker and no S3, so use local file storage and Replit Secrets for env. Keep the app runnable end-to-end in Replit. Make code minimal, clean, and production-ish.
+
+Project layout (create this exact tree and fill real content)
+medical-doc-ai/
+  README.md
+  .gitignore
+  replit_setup.md
+  .env.example            # only as a guide; values live in Replit Secrets
+
+  frontend-react/
+    .env.example
+    package.json
+    tsconfig.json
+    vite.config.ts
+    index.html
+    src/
+      main.tsx
+      App.tsx
+      api.ts
+      pages/
+        UploadPage.tsx
+        DocumentsPage.tsx
+        DocumentDetailPage.tsx
+      components/
+        UploadCard.tsx
+
+  backend-fastapi/
+    .env.example
+    requirements.txt
+    app/
+      __init__.py
+      main.py
+      config.py
+      routes/
+        health.py
+        documents.py
+        classify.py
+        codes.py
+        summary.py
+      services/
+        anthropic_client.py
+        text_extract.py
+        storage_local.py      # Replit-friendly storage (no S3)
+        prompts/
+          README.md
+          classification.md
+          codes.md
+          summary.md
+      db/
+        database.py
+        models.py
+        crud.py
+
+  evals/
+    datasets/
+      test-documents.json
+    results/.keep
+    README.md
+
+Global rules
+
+No Docker. Everything must run in Replit natively.
+
+Frontend: React + TypeScript + Vite + Material UI + react-router-dom + axios.
+
+Backend: FastAPI + SQLAlchemy + SQLite + anthropic + pypdf.
+
+Prompts: put real, usable content in services/prompts/*.md (not placeholders).
+
+File uploads: accept .pdf and .txt; extract text via pypdf or UTF-8 decode.
+
+Storage: use storage_local.py (save uploaded files beneath backend-fastapi/app/local_storage/).
+
+CORS: allow the Replit preview origin and http://localhost:5173 (read from env).
+
+Replit Secrets for configuration; .env.example only shows the keys.
+
+Environment variables (show in .env.example; don’t commit secrets)
+# Common
+ENV=local
+
+# Backend (set via Replit Secrets)
+ANTHROPIC_API_KEY=
+CLAUDE_MODEL=claude-3-5-sonnet-latest
+PROMPT_CACHE_TTL_SECONDS=3600
+DB_URL=sqlite:///./app.db
+ALLOW_ORIGINS=http://localhost:5173,https://<YOUR_REPLIT_PREVIEW_HOST>
+USE_CLAUDE_REAL=false        # if false → deterministic stub responses
+
+# Frontend
+VITE_API_BASE_URL=http://127.0.0.1:8000
+
+Frontend specifics
+
+src/api.ts creates an axios instance using import.meta.env.VITE_API_BASE_URL.
+
+Routes:
+
+/ → UploadPage
+
+/documents → list
+
+/documents/:id → detail (original text, classification, codes, summary, confidence)
+
+UploadPage:
+
+<input type="file" accept=".pdf,.txt">
+
+“Upload & Run Pipeline” → POST /documents (multipart: file, run_pipeline=true)
+
+Shows prettified JSON response
+
+Minimal MUI UI with clear loading/error states.
+
+Backend specifics
+
+requirements.txt:
+
+fastapi==0.115.2
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+sqlalchemy==2.0.36
+python-multipart==0.0.9
+pypdf==5.0.1
+anthropic==0.39.0
+tenacity==9.0.0
+
+
+app/main.py:
+
+FastAPI app, CORS from ALLOW_ORIGINS.
+
+include routers: health, documents, classify, codes, summary.
+
+/ → simple info JSON.
+
+Endpoints:
+
+GET /health
+
+POST /documents (multipart: file, run_pipeline:bool=true)
+
+Save file via storage_local.py
+
+Extract text via text_extract.py
+
+Create Document row
+
+If run_pipeline=true:
+
+anthropic_client.classify(text)
+
+anthropic_client.extract_codes(text, doc_type)
+
+anthropic_client.summarize(text, doc_type, codes)
+
+Save JSON payload in DocumentResult
+
+Return {document_id, processed, results}
+
+GET /documents (list recent 50)
+
+GET /documents/{id} (doc + results)
+
+POST /classify {document_text}
+
+POST /extract-codes {document_text, document_type?}
+
+POST /summarize {document_text, document_type?, codes?}
+
+anthropic_client.py:
+
+If USE_CLAUDE_REAL=false, return deterministic stub JSON (stable and testable).
+
+If true, call Anthropic SDK and enforce JSON-only responses.
+
+Methods:
+
+classify(text) → {document_type, confidence, rationale, evidence:[...]} (one of 5 types)
+
+extract_codes(text, doc_type) → {codes:[{code, description, confidence, evidence:[...]}]}
+
+summarize(text, doc_type, codes) → {summary, confidence, evidence:[...]}
+
+Load system prompts from services/prompts/*.md.
+
+Add comment in code where Prompt Caching and Extended Thinking would be toggled.
+
+services/prompts/classification.md:
+
+Real prompt: classify into exactly one of 5 types (CBC, BMP, X-RAY, CT, CLINICAL NOTE).
+
+JSON contract with document_type, confidence, rationale, evidence[].
+
+Few-shot examples (1-2 for CBC/BMP).
+
+Rule: if uncertain → CLINICAL NOTE with confidence < 0.7.
+
+services/prompts/codes.md:
+
+Define ICD-10 in plain language.
+
+Extract only diagnoses supported by document evidence.
+
+JSON: {"codes":[{"code","description","confidence","evidence":[]}]}
+
+No hallucinations; allow empty list.
+
+services/prompts/summary.md:
+
+Provider-facing summary (3–6 sentences), JSON with summary, confidence, evidence[].
+
+Reference codes if provided; clinical tone; cite exact quotes for key findings.
+
+db/models.py:
+
+Document(id, original_filename, created_at, local_path)
+
+DocumentResult(id, document_id FK, payload_json TEXT, created_at)
+
+text_extract.py: pdf → text via pypdf; txt → UTF-8 decode.
+
+storage_local.py: save uploads under app/local_storage/<uuid>/<filename>; return path string.
+
+Evals
+
+evals/datasets/test-documents.json with 3–5 seed cases (CBC, BMP, X-ray) and simple ground truth fields.
+
+evals/README.md describes how to run quick smoke checks with curl and how to expand to Claude Eval Tool later.
+
+README.md
+
+How to run backend in Replit (install Python deps; run uvicorn).
+
+How to run frontend in Replit (npm install; npm run dev).
+
+Where to set Replit Secrets (list keys).
+
+Endpoint list and example curl commands.
+
+Where prompts live + quick edit workflow.
+
+ICD-10 one-liner definition and “no hallucinations” policy.
+
+Startup / scripts
+
+Provide simple instructions in replit_setup.md:
+
+Add Secrets
+
+Start backend: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+Start frontend: npm run dev -- --host
+
+Open the two preview URLs and test upload
+
+Deliver the full code and content in one pass. It must compile and run in Replit without Docker.
+If anything is ambiguous, choose sensible defaults and explain them briefly in README.
+Return the complete file tree plus key files inline.

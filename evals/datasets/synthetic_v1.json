@@ -1,0 +1,52 @@
+[
+  {
+    "id": "cbc_001",
+    "document_type": "COMPLETE BLOOD COUNT",
+    "text": "CBC Report: WBC 13.2 x10^3/µL (elevated), Hgb 14.1 g/dL, Platelets 250 x10^3/µL. Impression: leukocytosis.",
+    "gold": {
+      "document_type": "COMPLETE BLOOD COUNT",
+      "icd10_codes": ["D72.829"],
+      "summary_facts": ["leukocytosis", "hemoglobin normal", "platelets normal"]
+    }
+  },
+  {
+    "id": "bmp_001",
+    "document_type": "BASIC METABOLIC PANEL",
+    "text": "Basic Metabolic Panel: Sodium 138 mmol/L, Potassium 3.0 mmol/L (low), Chloride 101, BUN 22 mg/dL, Creatinine 1.5 mg/dL.",
+    "gold": {
+      "document_type": "BASIC METABOLIC PANEL",
+      "icd10_codes": ["E87.6"],
+      "summary_facts": ["hypokalemia", "renal function borderline"]
+    }
+  },
+  {
+    "id": "xray_001",
+    "document_type": "X-RAY",
+    "text": "Chest X-ray: Right lower lobe airspace opacity consistent with pneumonia. No pleural effusion.",
+    "gold": {
+      "document_type": "X-RAY",
+      "icd10_codes": ["J18.9"],
+      "summary_facts": ["right lower lobe pneumonia", "no effusion"]
+    }
+  },
+  {
+    "id": "ct_001",
+    "document_type": "CT",
+    "text": "CT Head (non-contrast): No acute hemorrhage. Chronic lacunar infarct in left basal ganglia.",
+    "gold": {
+      "document_type": "CT",
+      "icd10_codes": ["I63.9"],
+      "summary_facts": ["no acute bleed", "lacunar infarct"]
+    }
+  },
+  {
+    "id": "note_001",
+    "document_type": "CLINICAL NOTE",
+    "text": "52-year-old with type 2 diabetes; HbA1c 8.4%. On metformin. Complains of burning feet suggestive of neuropathy.",
+    "gold": {
+      "document_type": "CLINICAL NOTE",
+      "icd10_codes": ["E11.9", "E11.40"],
+      "summary_facts": ["type 2 diabetes", "poor glycemic control", "neuropathy symptoms"]
+    }
+  }
+]

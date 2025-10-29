@@ -1,51 +1,66 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ConfidenceMeter } from "./ConfidenceMeter";
-import type { Summary } from "@shared/schema";
-import { FileText } from "lucide-react";
+// /src/components/SummaryCard.tsx
+import { Card, CardContent } from "@/components/ui/card";
 
-interface SummaryCardProps {
-  summary: Summary;
+type SummaryResult = {
+  summary: string;
+  bullets?: string[];
+  citations?: string[];
+  confidence?: number; // 0..1
+};
+
+function clamp01(n: number) {
+  return Math.max(0, Math.min(1, n));
 }
 
-export function SummaryCard({ summary }: SummaryCardProps) {
+function SummaryCard({ summary }: { summary: SummaryResult }) {
+  const conf =
+    Number.isFinite(summary?.confidence as number)
+      ? clamp01(summary.confidence as number)
+      : 0.75;
+
+  const pct = Math.round(conf * 100);
+  const level = conf >= 0.7 ? "High" : conf >= 0.4 ? "Medium" : "Low";
+
   return (
     <Card>
-      <CardHeader>
+      <CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold">Clinical Summary</CardTitle>
-            <CardDescription className="mt-1">Provider-facing structured summary</CardDescription>
+            <h3 className="text-xl font-semibold">Clinical Summary</h3>
+            <p className="text-sm text-muted-foreground">
+              Provider-facing structured summary
+            </p>
           </div>
-          <FileText className="w-5 h-5 text-muted-foreground" />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
-            {summary.summary}
-          </p>
+          <div className="text-sm px-3 py-1 rounded-md bg-muted">{level}</div>
         </div>
 
-        <ConfidenceMeter confidence={summary.confidence} size="sm" />
+        <p className="leading-7">{summary.summary}</p>
 
-        {summary.evidence && summary.evidence.length > 0 && (
-          <div className="space-y-2 pt-4 border-t">
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Key Evidence Citations
-            </h4>
-            <div className="space-y-2">
-              {summary.evidence.map((quote, idx) => (
-                <div 
-                  key={idx}
-                  className="text-xs italic text-muted-foreground bg-muted/30 p-3 rounded border-l-2 border-primary/40"
-                >
-                  &ldquo;{quote}&rdquo;
-                </div>
-              ))}
-            </div>
+        {summary.bullets?.length ? (
+          <ul className="list-disc pl-6 space-y-1">
+            {summary.bullets.map((b, i) => (
+              <li key={i}>{b}</li>
+            ))}
+          </ul>
+        ) : null}
+
+        <div className="pt-2">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted-foreground">Confidence</span>
+            <span className="text-sm text-muted-foreground">{pct}%</span>
           </div>
-        )}
+          <div className="h-2 rounded bg-muted">
+            <div
+              className="h-2 rounded bg-primary"
+              style={{ width: `${pct}%` }}
+              aria-label="summary-confidence"
+            />
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
 }
+
+export default SummaryCard;
+export { SummaryCard }; // <-- named export too

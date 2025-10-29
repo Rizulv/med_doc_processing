@@ -1,42 +1,77 @@
-node_modules
-dist
+# ─────────────────────────────
+# Root-level ignores (both apps)
+# ─────────────────────────────
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.Python
-.venv/
-venv/
-ENV/
-env/
-*.egg-info/
-.pytest_cache/
-.pythonlibs/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-app.db
-
-# Environment
-.env
-.env.local
-
-# Uploads
-backend-fastapi/app/local_storage/*
-!backend-fastapi/app/local_storage/.keep
-
-# Evaluation Results
-evals/results/*
-!evals/results/.keep
-
-# Temporary
+Thumbs.db
+.vscode/
+.idea/
 *.log
 tmp/
 temp/
+
+# Environment files
+.env
+.env.local
+
+# SQLite / local DBs
+*.db
+*.sqlite
+*.sqlite3
+
+# Archives
+*.tar.gz
+
+# ─────────────────────────────
+# Backend (FastAPI / Python)
+# ─────────────────────────────
+backend-fastapi/.env
+backend-fastapi/.venv/
+backend-fastapi/venv/
+backend-fastapi/ENV/
+backend-fastapi/env/
+
+# Python bytecode / caches
+backend-fastapi/**/__pycache__/
+backend-fastapi/**/*.py[cod]
+backend-fastapi/**/$py.class
+backend-fastapi/.pytest_cache/
+backend-fastapi/.mypy_cache/
+backend-fastapi/.ruff_cache/
+backend-fastapi/.pythonlibs/
+backend-fastapi/.Python
+
+# Local DB file (if created next to app)
+backend-fastapi/app/app.db
+
+# Local storage for uploaded files (keep placeholder)
+backend-fastapi/app/local_storage/*
+!backend-fastapi/app/local_storage/.keep
+
+# Legacy/alt storage folder (if present)
+backend-fastapi/app/storage/local/*
+!backend-fastapi/app/storage/local/.gitkeep
+
+# Coverage/artifacts
+backend-fastapi/.coverage
+backend-fastapi/htmlcov/
+backend-fastapi/coverage.xml
+
+# Build metadata
+backend-fastapi/*.egg-info/
+
+# ─────────────────────────────
+# Frontend (React / Vite)
+# ─────────────────────────────
+client/node_modules/
+client/dist/
+client/.env
+
+# If you generate type coverage or storybook later
+client/coverage/
+client/storybook-static/
+
+# ─────────────────────────────
+# Evals
+# ─────────────────────────────
+evals/results/*
+!evals/results/.keep

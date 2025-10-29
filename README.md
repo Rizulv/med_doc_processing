@@ -1,298 +1,231 @@
-# Medical Doc AI
+# MedicalDocAI — MVP
 
-AI-powered medical document classification, ICD-10 code extraction, and clinical summarization system for healthcare providers.
+AI pipeline to analyze medical documents: classify (5 types), extract ICD-10 codes with evidence, and generate a provider-facing summary.  
+Stack: **FastAPI** (backend) + **React/TypeScript** (client). Claude can be toggled on/off.
 
-## Features
+---
 
-- **Document Classification**: Automatically classify medical documents into 5 types (CBC, BMP, X-Ray, CT, Clinical Note)
-- **ICD-10 Code Extraction**: Extract diagnostic codes with confidence scoring and evidence-based validation
-- **Clinical Summarization**: Generate provider-facing summaries with key findings and recommendations
-- **Full Pipeline Processing**: Upload → Classify → Extract Codes → Summarize in one operation
-- **Stub Mode**: Test the system without API costs using deterministic responses
+## Repo structure
 
-## Tech Stack
+MedicalDocAI/
+├─ README.md
+├─ backend-fastapi/
+│ ├─ requirements.txt
+│ ├─ .env # create manually; values shared separately
+│ └─ app/
+│ ├─ main.py
+│ ├─ config.py
+│ ├─ db/
+│ │ ├─ database.py ├─ models.py └─ crud.py
+│ ├─ routes/
+│ │ ├─ health.py
+│ │ ├─ classify.py
+│ │ ├─ extract_codes.py
+│ │ ├─ summarize.py
+│ │ ├─ pipeline.py # previously documents.py
+│ │ └─ eval.py
+│ └─ services/
+│ ├─ anthropic_client.py
+│ ├─ text_extract.py
+│ └─ storage_local.py
+├─ client/ # React + Vite app
+│ ├─ package.json
+│ └─ src/...
+└─ evals/
+├─ datasets/
+│ └─ synthetic_v1.json
+└─ run_eval.py
 
-### Frontend
-- React + TypeScript + Vite
-- Shadcn/UI components with Tailwind CSS
-- React Query for data fetching
-- Wouter for routing
 
-### Backend
-- FastAPI (Python)
-- SQLite database for metadata
-- Anthropic Claude API integration
-- Local file storage for uploads
-- Production-ready prompt engineering
+**Document types (exact strings):**
 
-## Quick Start (Replit)
+- COMPLETE BLOOD COUNT  
+- BASIC METABOLIC PANEL  
+- X-RAY  
+- CT  
+- CLINICAL NOTE
 
-### 1. Set Up Environment Variables
+---
 
-Add these secrets in Replit Secrets:
+## 1) Backend — setup and run
 
-```
-ANTHROPIC_API_KEY=your_api_key_here  (optional for stub mode)
-USE_CLAUDE_REAL=false               (true to use real API)
-ALLOW_ORIGINS=http://localhost:5173
-```
-
-### 2. Start Backend
+**Prereqs:** Python 3.12
 
 ```bash
 cd backend-fastapi
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
+python -m venv .venv
+# Windows PowerShell
+. .venv/Scripts/activate
+# macOS/Linux
+# source .venv/bin/activate
 
-### 3. Start Frontend
+pip install -r requirements.txt
 
-In a new terminal:
+Create a blank .env in backend-fastapi/ (values are shared separately). Example keys:
 
-```bash
-npm run dev -- --host
-```
-
-### 4. Open the Application
-
-- Frontend: http://localhost:5173 (or Replit preview URL)
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
-
-## API Endpoints
-
-### Document Management
-
-**POST /documents**
-Upload and process medical documents
-- Accepts: PDF, TXT files
-- Query param: `run_pipeline=true` (runs full pipeline)
-- Returns: Classification, ICD-10 codes, and summary
-
-**GET /documents**
-List all uploaded documents (50 most recent)
-
-**GET /documents/{id}**
-Get document details with processing results
-
-### Individual Operations
-
-**POST /classify**
-```json
-{
-  "document_text": "string"
-}
-```
-Returns: Document type, confidence, rationale, evidence
-
-**POST /extract-codes**
-```json
-{
-  "document_text": "string",
-  "document_type": "COMPLETE BLOOD COUNT" // optional
-}
-```
-Returns: ICD-10 codes with descriptions, confidence, evidence
-
-**POST /summarize**
-```json
-{
-  "document_text": "string",
-  "document_type": "X-RAY", // optional
-  "codes": [...] // optional
-}
-```
-Returns: Clinical summary with confidence and evidence
-
-## Prompts
-
-All prompts are stored as markdown files in `backend-fastapi/app/services/prompts/`:
-
-- **classification.md**: 5-type document classification with few-shot examples
-- **codes.md**: ICD-10 extraction with hallucination prevention
-- **summary.md**: Provider-facing clinical summaries
-
-### Editing Prompts
-
-1. Navigate to `backend-fastapi/app/services/prompts/`
-2. Edit the relevant `.md` file
-3. Restart the backend server
-4. Test with evaluation dataset in `/evals`
-
-## ICD-10 Codes
-
-ICD-10 (International Classification of Diseases, 10th Revision) is a standardized diagnostic coding system. This system:
-
-- Only extracts codes explicitly supported by document evidence
-- Includes confidence scoring (≥0.8 = high, 0.5-0.79 = medium, <0.5 = low)
-- Prevents hallucinations through strict evidence requirements
-- Provides exact quotes supporting each code
-
-**Anti-Hallucination Policy:** Codes are only included when directly supported by document text. Empty code lists are valid and preferred over speculative coding.
-
-## Stub Mode vs Real API
-
-### Stub Mode (USE_CLAUDE_REAL=false)
-- **Default behavior** - no API key required
-- Deterministic responses based on keyword matching
-- Perfect for development and testing
-- Zero API costs
-
-### Real API Mode (USE_CLAUDE_REAL=true)
-- Requires `ANTHROPIC_API_KEY` in environment
-- Uses Claude AI for actual analysis
-- Higher accuracy, handles edge cases better
-- Production-ready performance
-
-## Evaluation
-
-Test cases are in `evals/datasets/test-documents.json`:
-
-- 5 sample documents (CBC, BMP, X-Ray, CT, Clinical Note)
-- Ground truth for validation
-- Ready for Claude Eval Tool integration
-
-### Quick Smoke Test
-
-```bash
-curl -X POST http://localhost:8000/classify \
-  -H "Content-Type: application/json" \
-  -d '{"document_text": "COMPLETE BLOOD COUNT\nWBC 12.5 K/uL\nHemoglobin 9.2 g/dL"}'
-```
-
-See `evals/README.md` for detailed testing instructions.
-
-## Project Structure
-
-```
-medical-doc-ai/
-├── README.md
-├── replit_setup.md
-├── .env.example
-├── .gitignore
-├── client/                    # React frontend
-│   ├── src/
-│   │   ├── components/       # Reusable UI components
-│   │   ├── pages/           # Main pages (Upload, Documents, Detail)
-│   │   └── lib/             # API client and utilities
-│   └── index.html
-├── backend-fastapi/          # Python FastAPI backend
-│   ├── app/
-│   │   ├── main.py          # FastAPI app entry point
-│   │   ├── config.py        # Configuration and settings
-│   │   ├── routes/          # API endpoints
-│   │   ├── services/        # Business logic
-│   │   │   ├── anthropic_client.py  # Claude AI integration
-│   │   │   ├── text_extract.py      # PDF/TXT extraction
-│   │   │   └── prompts/     # Production-ready prompts
-│   │   └── db/              # Database models and CRUD
-│   └── requirements.txt
-├── shared/                   # Shared TypeScript types
-│   └── schema.ts
-└── evals/                    # Evaluation datasets
-    ├── datasets/
-    │   └── test-documents.json
-    └── README.md
-```
-
-## Environment Variables
-
-See `.env.example` for all configuration options:
-
-```bash
-# Required for real API mode
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Model configuration
-CLAUDE_MODEL=claude-3-5-sonnet-latest
-PROMPT_CACHE_TTL_SECONDS=3600
-
-# Database
 DB_URL=sqlite:///./app.db
+ALLOW_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 
-# CORS configuration
-ALLOW_ORIGINS=http://localhost:5173
+# LLM
+USE_CLAUDE_REAL=true
+ANTHROPIC_API_KEY=sk-********
+# Prefer latest; if your org doesn't have it, use the dated model below
+CLAUDE_MODEL=claude-4-5
 
-# API mode
-USE_CLAUDE_REAL=false  # Set to true for production
+Run the API:
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
-# Frontend API base
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
 
-## Development
+Open docs: http://127.0.0.1:8000/docs
 
-### Frontend Development
+Core endpoints
 
-```bash
+Your route filenames are extract_codes.py, summarize.py, and pipeline.py.
+The actual paths are defined inside those routers. If you kept the original paths:
+
+POST /classify
+
+POST /extract-codes
+
+POST /summarize
+
+POST /documents (pipeline upload/process). If you changed the route prefix to “pipeline”, use that instead.
+
+GET /documents/{id} (fetch stored result)
+
+GET /eval/quick (tiny smoke metrics)
+
+Sample cURL:
+curl -X POST http://127.0.0.1:8000/classify \
+  -H "Content-Type: application/json" \
+  -d "{\"document_text\":\"CBC: WBC 12.8, Hb 9.2, Platelets 240\"}"
+
+2) Client — setup and run
+Prereqs: Node 20+
+
+cd client
+npm install
 npm run dev
-```
 
-Hot reload enabled, runs on port 5173
+Open http://localhost:5173
 
-### Backend Development
+Select a document type from the dropdown (or AUTO).
 
-```bash
-cd backend-fastapi
-python -m uvicorn app.main:app --reload
-```
+Upload a .txt or .pdf.
 
-Auto-reload on file changes, runs on port 8000
+View classification, codes, and summary panels.
 
-### Adding New Document Types
+If your backend origin differs, set VITE_API_BASE in client/.env:
+VITE_API_BASE=http://127.0.0.1:8000
 
-1. Update `DOCUMENT_TYPES` in `shared/schema.ts`
-2. Add classification rules in `prompts/classification.md`
-3. Update icon mappings in `ClassificationPanel.tsx`
-4. Add test cases to `evals/datasets/test-documents.json`
 
-## Advanced Features
+Sample Docs or txt files for testing are in test_docs folder
 
-### Prompt Caching
+3) Evals — what they are and how they fit
 
-Enable in `anthropic_client.py` by adding cache_control parameter:
-```python
-# Reduces latency and cost for frequently used prompts
-```
+What: dataset-level checks to measure prompt quality and extraction accuracy over labeled examples (not a single upload).
+Why: to iterate prompts reliably. You tweak prompt → run eval → see precision/recall/F1 and summary coverage change.
 
-### Extended Thinking
+Quick smoke metrics:
+# returns JSON with tiny metrics from a small labeled set
+curl http://127.0.0.1:8000/eval/quick
 
-Use Claude models with extended thinking for complex edge cases:
-- Improves accuracy on ambiguous documents
-- Increases latency slightly
-- Ideal for low-confidence scenarios
 
-## Troubleshooting
+Programmatic runner:
+cd evals
+python run_eval.py --base-url http://127.0.0.1:8000 \
+  --dataset evals/datasets/synthetic_v1.json \
+  --mode with_hint
 
-**Backend won't start:**
-- Check Python dependencies: `pip list | grep fastapi`
-- Verify port 8000 is available
-- Check database permissions
+with_hint: simulates the user selecting type in the UI (classification is skipped).
 
-**Frontend can't connect to backend:**
-- Verify `VITE_API_BASE_URL` is set correctly
-- Check CORS configuration in backend
-- Ensure both servers are running
+classify_only: calls /classify and reports classification accuracy.
 
-**Stub mode not working:**
-- Confirm `USE_CLAUDE_REAL=false`
-- Check console for error messages
-- Verify prompt files exist in `backend-fastapi/app/services/prompts/`
+UI vs Evals:
 
-## Security Notes
+UI shows per-document results for a single upload.
 
-- Never commit API keys to version control
-- Use Replit Secrets for sensitive environment variables
-- File uploads are stored locally (not in production database)
-- PHI (Protected Health Information) should be de-identified before processing
+Evals compute metrics across a labeled set to guide prompt improvements.
 
-## License
+4) Testing with real Claude
 
-This is a demonstration project for Replit. See LICENSE file for details.
+.env already uses USE_CLAUDE_REAL=true.
 
-## Support
+Ensure the model name exists for your org:
 
-For issues or questions:
-1. Check `evals/README.md` for testing guidance
-2. Review prompt files for expected behavior
-3. Test with evaluation dataset first
-4. Verify environment variables are set correctly
+Prefer claude-4-5
+
+If you get “model not found (404)”, use claude-4-5-latest
+
+Prompt caching is configured correctly (ephemeral cache blocks only; no ttl_seconds field).
+
+Versions known good:
+anthropic==0.40.0
+httpx==0.27.2
+pydantic-settings>=2.3
+
+5) Sample test documents (save as .txt)
+
+cbc_demo.txt
+
+CBC Report: WBC 13.2 x10^3/µL (elevated), Hgb 14.1 g/dL, Platelets 250 x10^3/µL. Impression: leukocytosis.
+
+
+bmp_demo.txt
+
+Basic Metabolic Panel: Sodium 138 mmol/L, Potassium 3.0 mmol/L (low), Chloride 101, BUN 22 mg/dL, Creatinine 1.5 mg/dL.
+
+
+xray_demo.txt
+
+Chest X-ray: Right lower lobe airspace opacity consistent with pneumonia. No pleural effusion.
+
+
+ct_demo.txt
+
+CT Head (non-contrast): No acute hemorrhage. Chronic lacunar infarct in left basal ganglia.
+
+
+note_demo.txt
+
+52-year-old with type 2 diabetes; HbA1c 8.4%. On metformin. Complains of burning feet suggestive of neuropathy
+
+6) Common issues
+
+404 model not found
+Your org may not have claude-3-5-sonnet-latest. Switch to claude-3-5-sonnet-20241022.
+
+Prompt cache errors (extra inputs/TTL)
+We only send {"cache_control":{"type":"ephemeral"}}. Ensure you didn’t add ttl_seconds.
+
+Proxies error
+Use anthropic==0.40.0 and httpx==0.27.2. Don’t pass a proxies arg to the SDK client.
+
+CORS
+Add your client origins to ALLOW_ORIGINS in backend .env.
+
+7) Minimal workflow for the team
+
+Pull repo
+
+Create backend-fastapi/.env (values provided privately)
+
+Start backend → open Swagger → sanity-check endpoints
+
+Start client → upload a sample → verify all panels
+
+Run GET /eval/quick → capture baseline metrics
+
+Improve prompts → re-run evals → document metric deltas
+
+8) What’s next (after this README)
+
+Add Docker for backend and client (+ optional docker-compose.yml)
+
+Expand eval dataset (≥10 docs per type) and keep a hold-out set
+
+Track prompt versions and metrics in docs/
+
+Wire S3 for file storage when moving off local dev
+
+Add CI later (GitHub Actions) once Docker is in

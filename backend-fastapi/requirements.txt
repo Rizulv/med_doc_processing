@@ -1,8 +1,11 @@
 fastapi==0.115.2
 uvicorn[standard]==0.30.6
+SQLAlchemy==2.0.36
 pydantic==2.9.2
-sqlalchemy==2.0.36
-python-multipart==0.0.9
-pypdf==5.0.1
+pydantic-settings==2.6.1
+python-dotenv==1.2.1
 anthropic==0.39.0
+httpx==0.28.1
+pypdf==5.0.1
+python-multipart==0.0.9
 tenacity==9.0.0

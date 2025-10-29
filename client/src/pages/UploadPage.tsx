@@ -9,11 +9,13 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import api from "@/lib/api";
 import type { UploadResponse } from "@shared/schema";
+import DocTypeSelect, { type DocTypeChoice } from "@/components/DocTypeSelect";
 
 export default function UploadPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<UploadResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [docType, setDocType] = useState<DocTypeChoice>("AUTO"); // NEW
   const { toast } = useToast();
 
   const handleFileUpload = async (file: File) => {
@@ -23,25 +25,29 @@ export default function UploadPage() {
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('run_pipeline', 'true');
+      formData.append("file", file);
+      formData.append("run_pipeline", "true");
 
-      const response = await api.post<UploadResponse>('/documents', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      // Send user's choice to backend (harmless if backend ignores it)
+      if (docType !== "AUTO") {
+        formData.append("document_type_hint", docType);
+      }
+
+      const response = await api.post<UploadResponse>("/documents", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       setResult(response.data);
-      
+
       toast({
         title: "Processing Complete",
         description: "Document classified and analyzed successfully",
       });
     } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || "Failed to process document";
+      const errorMessage =
+        err.response?.data?.detail || err.message || "Failed to process document";
       setError(errorMessage);
-      
+
       toast({
         title: "Processing Failed",
         description: errorMessage,
@@ -69,11 +75,13 @@ export default function UploadPage() {
           </p>
         </div>
 
+        {/* NEW: selector */}
+        <div className="max-w-2xl mx-auto mb-4">
+          <DocTypeSelect value={docType} onChange={setDocType} />
+        </div>
+
         <div className="max-w-2xl mx-auto mb-8">
-          <UploadCard 
-            onFileSelect={handleFileUpload} 
-            isProcessing={isProcessing}
-          />
+          <UploadCard onFileSelect={handleFileUpload} isProcessing={isProcessing} />
         </div>
 
         {error && (
@@ -111,11 +119,10 @@ export default function UploadPage() {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold">
-                  ICD-10 Diagnostic Codes
-                </h3>
+                <h3 className="text-xl font-semibold">ICD-10 Diagnostic Codes</h3>
                 <span className="text-sm text-muted-foreground">
-                  {result.results.codes.codes.length} {result.results.codes.codes.length === 1 ? 'code' : 'codes'} identified
+                  {result.results.codes.codes.length}{" "}
+                  {result.results.codes.codes.length === 1 ? "code" : "codes"} identified
                 </span>
               </div>
 

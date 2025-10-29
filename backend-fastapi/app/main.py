@@ -37,7 +37,7 @@ def _on_startup():
 # ---- Routers ----
 app.include_router(health.router, tags=["health"])
 app.include_router(classify.router, tags=["classify"])
-app.include_router(codes.router, tags=["codes"])
-app.include_router(summary.router, tags=["summary"])
-app.include_router(documents.router, tags=["pipeline"])
+app.include_router(extract_codes.router, tags=["codes"])
+app.include_router(summarize.router, tags=["summary"])
+app.include_router(pipeline.router, tags=["pipeline"])
 app.include_router(eval_router)  # /eval/*

@@ -267,3 +267,7 @@ On metformin. Complains of burning feet suggestive of neuropathy.
 - Track prompt versions and metrics in `docs/`
 - Wire S3 for file storage when moving off local dev
 - Add CI later (GitHub Actions) once Docker is in
+
+## CI/CD Status
+
+GitHub Actions automated deployment is now enabled.

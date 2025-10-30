@@ -271,3 +271,5 @@ On metformin. Complains of burning feet suggestive of neuropathy.
 ## CI/CD Status
 
 GitHub Actions automated deployment is now enabled.
+
+# CI/CD is now fully configured with EKS access

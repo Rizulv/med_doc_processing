@@ -14,6 +14,9 @@ jobs:
   # Build backend service
   build-backend:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,9 +24,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -32,19 +34,22 @@ jobs:
       - name: Build backend Docker image
         working-directory: ./backend-fastapi
         run: |
-          docker build -t ${{ env.ECR_REGISTRY }}/med-doc-backend:${{ github.sha }} .
-          docker tag ${{ env.ECR_REGISTRY }}/med-doc-backend:${{ github.sha }} \
-                     ${{ env.ECR_REGISTRY }}/med-doc-backend:latest
+          docker build -t ${{ env.ECR_REGISTRY }}/${{ secrets.ECR_BACKEND_REPO }}:${{ github.sha }} .
+          docker tag ${{ env.ECR_REGISTRY }}/${{ secrets.ECR_BACKEND_REPO }}:${{ github.sha }} \
+                     ${{ env.ECR_REGISTRY }}/${{ secrets.ECR_BACKEND_REPO }}:latest
 
       - name: Push backend to ECR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          docker push ${{ env.ECR_REGISTRY }}/med-doc-backend:${{ github.sha }}
-          docker push ${{ env.ECR_REGISTRY }}/med-doc-backend:latest
+          docker push ${{ env.ECR_REGISTRY }}/${{ secrets.ECR_BACKEND_REPO }}:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/${{ secrets.ECR_BACKEND_REPO }}:latest
 
   # Build frontend service
   build-frontend:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,9 +57,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -64,22 +68,25 @@ jobs:
         run: |
           docker build \
             -f Dockerfile.frontend \
-            --build-arg VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL || 'http://backend:8000' }} \
-            -t ${{ env.ECR_REGISTRY }}/med-doc-frontend:${{ github.sha }} \
+            --build-arg VITE_API_BASE_URL="" \
+            -t ${{ env.ECR_REGISTRY }}/${{ secrets.ECR_FRONTEND_REPO }}:${{ github.sha }} \
             .
-          docker tag ${{ env.ECR_REGISTRY }}/med-doc-frontend:${{ github.sha }} \
-                     ${{ env.ECR_REGISTRY }}/med-doc-frontend:latest
+          docker tag ${{ env.ECR_REGISTRY }}/${{ secrets.ECR_FRONTEND_REPO }}:${{ github.sha }} \
+                     ${{ env.ECR_REGISTRY }}/${{ secrets.ECR_FRONTEND_REPO }}:latest
 
       - name: Push frontend to ECR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          docker push ${{ env.ECR_REGISTRY }}/med-doc-frontend:${{ github.sha }}
-          docker push ${{ env.ECR_REGISTRY }}/med-doc-frontend:latest
+          docker push ${{ env.ECR_REGISTRY }}/${{ secrets.ECR_FRONTEND_REPO }}:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/${{ secrets.ECR_FRONTEND_REPO }}:latest
 
   # Deploy to EKS (only on main branch)
   deploy:
     needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
@@ -88,21 +95,20 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Update kubeconfig
         run: |
-          aws eks update-kubeconfig --name med-doc-dev --region ${{ env.AWS_REGION }}
+          aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
 
       - name: Deploy to Kubernetes
         run: |
           # Update image tags in k8s manifests
           kubectl -n dev set image deployment/api \
-            api=${{ env.ECR_REGISTRY }}/med-doc-backend:${{ github.sha }}
+            api=${{ env.ECR_REGISTRY }}/${{ secrets.ECR_BACKEND_REPO }}:${{ github.sha }}
           kubectl -n dev set image deployment/web \
-            web=${{ env.ECR_REGISTRY }}/med-doc-frontend:${{ github.sha }}
+            web=${{ env.ECR_REGISTRY }}/${{ secrets.ECR_FRONTEND_REPO }}:${{ github.sha }}
           
           # Wait for rollout
           kubectl -n dev rollout status deployment/api --timeout=5m

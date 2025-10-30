@@ -257,13 +257,14 @@ jobs:
           print(f"   📈 Coverage: {eval_results.get('summary_coverage', 0)}")
           PYTHON_SCRIPT
           
-          # Run eval inside cluster
+          # Run eval inside cluster with service account that has S3 access
           kubectl run eval-generator \
             --namespace=dev \
             --image=python:3.12-slim \
             --restart=Never \
             --rm \
             -i \
+            --serviceaccount=api-sa \
             --command -- bash -c \
             "pip install requests boto3 --quiet && python - < /dev/stdin" \
             < /tmp/run_eval_and_upload.py

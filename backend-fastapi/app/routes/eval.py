@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from app.services.anthropic_client import client
+from app.config import settings
 
 router = APIRouter(prefix="/eval", tags=["eval"])
 
@@ -307,10 +308,10 @@ def get_eval_status(job_id: str):
 
 @router.get("/quick")
 def quick_eval():
-    """Legacy endpoint - returns mock results instantly"""
-    # Override client setting for eval endpoint to avoid timeout
+    """Run evaluation with real or mock Claude based on settings"""
+    # Use the configured setting for evaluation
     original_use_real = client.use_real
-    client.use_real = False  # Always use mock for instant response
+    client.use_real = settings.use_claude_real_for_eval
     
     try:
         n = len(DATA)

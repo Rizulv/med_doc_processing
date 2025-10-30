@@ -7,12 +7,14 @@ import { AppHeader } from "@/components/AppHeader";
 import UploadPage from "@/pages/UploadPage";
 import DocumentsPage from "@/pages/DocumentsPage";
 import DocumentDetailPage from "@/pages/DocumentDetailPage";
+import EvalReportPage from "@/pages/EvalReportPage";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={UploadPage} />
+      <Route path="/eval-report" component={EvalReportPage} />
       <Route path="/documents" component={DocumentsPage} />
       <Route path="/documents/:id" component={DocumentDetailPage} />
       <Route component={NotFound} />

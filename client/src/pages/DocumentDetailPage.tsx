@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ClassificationPanel } from "@/components/ClassificationPanel";
 import { CodeCard } from "@/components/CodeCard";
 import { SummaryCard } from "@/components/SummaryCard";
+import { SummaryReportCard } from "@/components/SummaryReportCard";
 import { ArrowLeft, AlertCircle, FileText, Calendar } from "lucide-react";
 import api from "@/lib/api";
 import type { DocumentWithResults } from "@shared/schema";
@@ -103,36 +104,41 @@ export default function DocumentDetailPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
-              <ClassificationPanel classification={document.results.classification} />
+          <div className="space-y-8">
+            {/* Summary Report with Download Button */}
+            <SummaryReportCard document={document} />
 
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold">
-                  ICD-10 Diagnostic Codes
-                </h3>
+            <div className="grid lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
+                <ClassificationPanel classification={document.results.classification} />
 
-                {document.results.codes.codes.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-6 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        No diagnostic codes identified in this document
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid gap-4">
-                    {document.results.codes.codes.map((code, idx) => (
-                      <CodeCard key={idx} code={code} />
-                    ))}
-                  </div>
-                )}
+                <div className="space-y-4">
+                  <h3 className="text-xl font-semibold">
+                    ICD-10 Diagnostic Codes
+                  </h3>
+
+                  {document.results.codes.codes.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-6 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          No diagnostic codes identified in this document
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-4">
+                      {document.results.codes.codes.map((code, idx) => (
+                        <CodeCard key={idx} code={code} />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-6 order-1 lg:order-2">
-              <div className="lg:sticky lg:top-8">
-                <SummaryCard summary={document.results.summary} />
+              <div className="space-y-6 order-1 lg:order-2">
+                <div className="lg:sticky lg:top-8">
+                  <SummaryCard summary={document.results.summary} />
+                </div>
               </div>
             </div>
           </div>

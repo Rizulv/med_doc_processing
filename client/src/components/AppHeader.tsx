@@ -1,10 +1,10 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Activity, Upload, FolderOpen } from "lucide-react";
+import { Activity, ClipboardCheck, FolderOpen } from "lucide-react";
 
 export function AppHeader() {
   const [location] = useLocation();
-  
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between max-w-7xl">
@@ -16,20 +16,20 @@ export function AppHeader() {
             <span className="font-semibold text-lg">Medical Doc AI</span>
           </div>
         </Link>
-        
+
         <nav className="flex items-center gap-2">
-          <Link href="/">
-            <Button 
-              variant={location === "/" ? "default" : "ghost"}
+          <Link href="/eval-report">
+            <Button
+              variant={location === "/eval-report" ? "default" : "ghost"}
               size="default"
-              data-testid="link-upload"
+              data-testid="link-eval-report"
             >
-              <Upload className="w-4 h-4 mr-2" />
-              Upload
+              <ClipboardCheck className="w-4 h-4 mr-2" />
+              Eval Test Report
             </Button>
           </Link>
           <Link href="/documents">
-            <Button 
+            <Button
               variant={location.startsWith("/documents") ? "default" : "ghost"}
               size="default"
               data-testid="link-documents"

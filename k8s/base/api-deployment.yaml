@@ -42,7 +42,7 @@ spec:
         - name: DB_URL
           value: "sqlite:////data/app.db"
         - name: ALLOW_ORIGINS
-          value: "http://web,http://localhost"
+          value: "*"
         volumeMounts:
         - name: data
           mountPath: /data

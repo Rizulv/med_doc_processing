@@ -116,22 +116,31 @@ jobs:
 
       - name: Run evaluation gate
         run: |
-          # Port-forward and run evals
-          kubectl -n dev port-forward svc/api 18000:80 &
+          # Wait until deployments/pods report ready to reduce flakiness
+          kubectl -n dev wait --for=condition=available deployment/api --timeout=180s
+          kubectl -n dev wait --for=condition=ready pod -l app=api --timeout=180s
+
+          # Start port-forward in background and retry connecting a few times
+          kubectl -n dev port-forward svc/api 18000:80 >/tmp/port-forward.log 2>&1 &
           PF_PID=$!
-          sleep 5
-          
-          # Install Python deps for eval
-          pip install requests
-          
-          # Run eval
+
+          echo "Waiting for forwarded port to accept connections..."
+          for i in $(seq 1 12); do
+            if curl -sS http://127.0.0.1:18000/health >/dev/null 2>&1; then
+              echo "API reachable on forwarded port"
+              break
+            fi
+            echo "Attempt $i: not reachable yet, sleeping 5s"
+            sleep 5
+          done
+
+          # Install evaluation requirements and run eval script
+          pip install -r evals/requirements.txt || pip install requests
           python evals/run_eval.py --base-url http://127.0.0.1:18000 || EXIT_CODE=$?
-          
-          # Cleanup
+
+          # Tear down port-forward and exit with eval exit code if any
           kill $PF_PID || true
-          
-          # Fail if eval failed
-          if [ ! -z "$EXIT_CODE" ]; then
+          if [ -n "${EXIT_CODE:-}" ]; then
             echo "Evaluation failed!"
             exit $EXIT_CODE
           fi

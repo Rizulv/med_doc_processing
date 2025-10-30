@@ -154,17 +154,17 @@ jobs:
           
           # Test 2: Classification
           print("\nTesting classification...")
-          class_result = post("/classify", {"text": "Complete Blood Count (CBC) results: WBC 7.5, RBC 4.8, Hemoglobin 14.2"})
+          class_result = post("/classify", {"document_text": "Complete Blood Count (CBC) results: WBC 7.5, RBC 4.8, Hemoglobin 14.2"})
           print(f"Classification result: {class_result}")
           
           # Test 3: Code extraction
           print("\nTesting code extraction...")
-          codes_result = post("/extract-codes", {"text": "Patient diagnosed with Type 2 Diabetes Mellitus (E11.9) and Hypertension (I10)"})
+          codes_result = post("/extract-codes", {"document_text": "Patient diagnosed with Type 2 Diabetes Mellitus (E11.9) and Hypertension (I10)"})
           print(f"Codes extracted: {codes_result}")
           
           # Test 4: Summarization
           print("\nTesting summarization...")
-          summary_result = post("/summarize", {"text": "Patient presents with acute chest pain, radiating to left arm. ECG shows ST elevation. Troponin levels elevated."})
+          summary_result = post("/summarize", {"document_text": "Patient presents with acute chest pain, radiating to left arm. ECG shows ST elevation. Troponin levels elevated."})
           print(f"Summary: {summary_result}")
           
           print("\n✅ All evaluation tests passed!")

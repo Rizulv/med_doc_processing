@@ -1,9 +1,14 @@
 # app/routes/eval.py
 import re
-from fastapi import APIRouter
+import uuid
+from datetime import datetime
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from app.services.anthropic_client import client
 
 router = APIRouter(prefix="/eval", tags=["eval"])
+
+# In-memory storage for async eval jobs
+eval_jobs = {}
 
 # Comprehensive evaluation dataset
 DATA = [
@@ -124,7 +129,6 @@ def get_latest_eval():
     """Fetch the latest pre-computed eval results from S3"""
     import boto3
     import json
-    from fastapi import HTTPException
     from app.config import settings
     
     try:
@@ -147,10 +151,6 @@ def get_latest_eval():
             status_code=500,
             detail=f"Failed to fetch evaluation results from storage: {str(e)}"
         )
-
-
-def _norm(c: str) -> str:
-    return re.sub(r"[^A-Z0-9]", "", c.upper())
 
 
 def _run_eval_job(job_id: str, use_real_claude: bool = False):

@@ -75,3 +75,17 @@ client/storybook-static/
 # ─────────────────────────────
 evals/results/*
 !evals/results/.keep
+
+# ─────────────────────────────
+# Node modules (root level)
+# ─────────────────────────────
+node_modules/
+package-lock.json
+
+# ─────────────────────────────
+# Environment files
+# ─────────────────────────────
+backend-fastapi/.env
+.env
+*.env
+!.env.sample

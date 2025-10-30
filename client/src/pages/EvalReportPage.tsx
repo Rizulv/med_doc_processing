@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useState } from "react";
 
 interface TestResult {
   id: string;
@@ -29,12 +30,36 @@ interface EvalResults {
   summary_coverage: number;
   mode: string;
   test_results: TestResult[];
+  metadata?: {
+    timestamp: string;
+    git_commit: string;
+    git_branch: string;
+    workflow_run_id: string;
+    workflow_run_number: number;
+    repository: string;
+  };
 }
 
 async function fetchEvalResults(): Promise<EvalResults> {
-  const res = await fetch("/eval/quick");
-  if (!res.ok) throw new Error("Failed to fetch eval results");
-  return res.json();
+  // Try to fetch from S3 first, fallback to API
+  try {
+    const s3Response = await fetch(
+      "https://med-docs-dev.s3.ap-south-1.amazonaws.com/eval-results/latest.json"
+    );
+    if (s3Response.ok) {
+      return s3Response.json();
+    }
+  } catch (e) {
+    console.warn("Failed to fetch from S3, trying API endpoint...", e);
+  }
+  
+  // Fallback to API endpoint (serves cached S3 results)
+  const apiResponse = await fetch("/eval/latest");
+  if (!apiResponse.ok) {
+    throw new Error(`Failed to fetch eval results: ${apiResponse.status} ${apiResponse.statusText}`);
+  }
+  
+  return apiResponse.json();
 }
 
 function MetricBadge({ label, value, threshold = 0.7 }: { label: string; value: number; threshold?: number }) {
@@ -172,11 +197,11 @@ function TestCaseCard({ result }: { result: TestResult }) {
 }
 
 export default function EvalReportPage() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["evalResults"],
     queryFn: fetchEvalResults,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    retry: 1,
+    retry: 2,
   });
 
   if (isLoading) {
@@ -184,19 +209,19 @@ export default function EvalReportPage() {
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
-            <CardTitle className="text-blue-900">Running Evaluation Tests...</CardTitle>
+            <CardTitle className="text-blue-900 flex items-center gap-2">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              Loading Evaluation Results
+            </CardTitle>
             <CardDescription className="text-blue-700">
-              This may take 2-3 minutes as we process 15 test cases using Claude AI.
-              Please wait while we analyze medical documents.
+              Fetching the latest evaluation report from storage...
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-3/4" />
-            <div className="flex items-center gap-2 text-sm text-blue-600 mt-4">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              <span>Processing test cases with Anthropic Claude API...</span>
+          <CardContent>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-5/6" />
             </div>
           </CardContent>
         </Card>
@@ -246,10 +271,54 @@ export default function EvalReportPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Evaluation Test Report</h1>
-        <p className="text-muted-foreground">
-          Comprehensive analysis of medical document processing performance
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Evaluation Test Report</h1>
+            <p className="text-muted-foreground">
+              Comprehensive analysis of medical document processing performance
+            </p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            {isFetching ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
+        
+        {data?.metadata && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">Report Metadata</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+              <div>
+                <span className="text-gray-500">Generated:</span>
+                <div className="font-medium">
+                  {new Date(data.metadata.timestamp).toLocaleString()}
+                </div>
+              </div>
+              <div>
+                <span className="text-gray-500">Commit:</span>
+                <div className="font-mono text-xs">
+                  {data.metadata.git_commit.substring(0, 7)}
+                </div>
+              </div>
+              <div>
+                <span className="text-gray-500">Branch:</span>
+                <div className="font-medium">{data.metadata.git_branch}</div>
+              </div>
+              <div>
+                <span className="text-gray-500">Build:</span>
+                <div className="font-medium">#{data.metadata.workflow_run_number}</div>
+              </div>
+              <div>
+                <span className="text-gray-500">Mode:</span>
+                <div className="font-medium">{data.mode}</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <Card className="mb-8 bg-gradient-to-br from-primary/5 to-primary/10">

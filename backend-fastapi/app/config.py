@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     claude_model: str = "claude-3-5-sonnet-20240620"  # pin to a real model id
     use_claude_real: bool = False
+    use_claude_real_for_eval: bool = False  # Separate setting for eval endpoint (avoid timeout)
     prompt_cache_ttl_seconds: Optional[int] = None  # NEW: if set, we cache the long prompt
 
     # ---- app/runtime ----

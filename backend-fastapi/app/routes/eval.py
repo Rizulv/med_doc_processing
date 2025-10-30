@@ -119,76 +119,271 @@ def _norm(c: str) -> str:
     return re.sub(r"[^A-Z0-9]", "", c.upper())
 
 
+@router.get("/latest")
+def get_latest_eval():
+    """Fetch the latest pre-computed eval results from S3"""
+    import boto3
+    import json
+    from fastapi import HTTPException
+    from app.config import settings
+    
+    try:
+        s3 = boto3.client('s3', region_name=settings.aws_region)
+        response = s3.get_object(
+            Bucket=settings.s3_bucket_name,
+            Key='eval-results/latest.json'
+        )
+        
+        eval_results = json.loads(response['Body'].read())
+        return eval_results
+        
+    except s3.exceptions.NoSuchKey:
+        raise HTTPException(
+            status_code=404, 
+            detail="No evaluation results found. Results are generated during deployment."
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch evaluation results from storage: {str(e)}"
+        )
+
+
+def _norm(c: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", c.upper())
+
+
+def _run_eval_job(job_id: str, use_real_claude: bool = False):
+    """Background function to run evaluation"""
+    try:
+        eval_jobs[job_id]["status"] = "running"
+        eval_jobs[job_id]["progress"] = 0
+        
+        # Override client setting
+        original_use_real = client.use_real
+        client.use_real = use_real_claude
+        
+        n = len(DATA)
+        tp = fp = fn = 0
+        cov_sum = 0.0
+        test_results = []
+
+        for idx, item in enumerate(DATA):
+            # Update progress
+            eval_jobs[job_id]["progress"] = int((idx / n) * 100)
+            eval_jobs[job_id]["current_test"] = item["id"]
+            
+            # Extract codes
+            pred_response = client.extract_codes(item["text"], item["doc_type"])
+            pred = pred_response.get("codes", [])
+            pred_set = {_norm(x.get("code", "")) for x in pred}
+            gold_set = {_norm(x) for x in item["gold_codes"]}
+
+            # Calculate per-item metrics
+            item_tp = len(pred_set & gold_set)
+            item_fp = len(pred_set - gold_set)
+            item_fn = len(gold_set - pred_set)
+
+            tp += item_tp
+            fp += item_fp
+            fn += item_fn
+
+            item_precision = item_tp / (item_tp + item_fp) if (item_tp + item_fp) else 0.0
+            item_recall = item_tp / (item_tp + item_fn) if (item_tp + item_fn) else 0.0
+            item_f1 = (
+                2 * item_precision * item_recall / (item_precision + item_recall)
+                if (item_precision + item_recall)
+                else 0.0
+            )
+
+            # Generate summary
+            summ = client.summarize(item["text"], item["doc_type"], pred)
+            s = (summ.get("summary") or "").lower()
+            got = sum(1 for f in item["gold_facts"] if f.lower() in s)
+            item_coverage = got / max(1, len(item["gold_facts"]))
+            cov_sum += item_coverage
+
+            # Store detailed results
+            test_results.append(
+                {
+                    "id": item["id"],
+                    "document_type": item["doc_type"],
+                    "query": item["text"],
+                    "expected_codes": item["gold_codes"],
+                    "predicted_codes": [c.get("code", "") for c in pred],
+                    "expected_facts": item["gold_facts"],
+                    "generated_summary": summ.get("summary", ""),
+                    "metrics": {
+                        "precision": round(item_precision, 2),
+                        "recall": round(item_recall, 2),
+                        "f1": round(item_f1, 2),
+                        "coverage": round(item_coverage, 2),
+                    },
+                }
+            )
+
+        # Calculate overall metrics
+        precision = tp / (tp + fp) if (tp + fp) else 0.0
+        recall = tp / (tp + fn) if (tp + fn) else 0.0
+        f1 = (
+            2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+        )
+
+        results = {
+            "items": n,
+            "codes_precision": round(precision, 2),
+            "codes_recall": round(recall, 2),
+            "codes_f1": round(f1, 2),
+            "summary_coverage": round(cov_sum / n, 2),
+            "mode": f"USE_CLAUDE_REAL={use_real_claude}",
+            "test_results": test_results,
+        }
+        
+        # Mark as complete
+        eval_jobs[job_id]["status"] = "completed"
+        eval_jobs[job_id]["progress"] = 100
+        eval_jobs[job_id]["results"] = results
+        eval_jobs[job_id]["completed_at"] = datetime.now().isoformat()
+        
+        # Restore original setting
+        client.use_real = original_use_real
+        
+    except Exception as e:
+        eval_jobs[job_id]["status"] = "failed"
+        eval_jobs[job_id]["error"] = str(e)
+        client.use_real = original_use_real
+
+
+@router.post("/start")
+def start_eval(background_tasks: BackgroundTasks, use_real: bool = False):
+    """Start a new evaluation job"""
+    job_id = str(uuid.uuid4())
+    
+    eval_jobs[job_id] = {
+        "job_id": job_id,
+        "status": "pending",
+        "progress": 0,
+        "current_test": None,
+        "created_at": datetime.now().isoformat(),
+        "use_real_claude": use_real,
+    }
+    
+    # Start background task
+    thread = threading.Thread(target=_run_eval_job, args=(job_id, use_real))
+    thread.daemon = True
+    thread.start()
+    
+    return {
+        "job_id": job_id,
+        "status": "pending",
+        "message": f"Evaluation started. Total tests: {len(DATA)}",
+    }
+
+
+@router.get("/status/{job_id}")
+def get_eval_status(job_id: str):
+    """Get status of evaluation job"""
+    if job_id not in eval_jobs:
+        return {"error": "Job not found"}, 404
+    
+    job = eval_jobs[job_id]
+    
+    response = {
+        "job_id": job_id,
+        "status": job["status"],
+        "progress": job["progress"],
+        "current_test": job.get("current_test"),
+        "created_at": job["created_at"],
+    }
+    
+    if job["status"] == "completed":
+        response["results"] = job["results"]
+        response["completed_at"] = job.get("completed_at")
+    elif job["status"] == "failed":
+        response["error"] = job.get("error")
+    
+    return response
+
+
 @router.get("/quick")
 def quick_eval():
-    n = len(DATA)
-    tp = fp = fn = 0
-    cov_sum = 0.0
-    test_results = []
+    """Legacy endpoint - returns mock results instantly"""
+    # Override client setting for eval endpoint to avoid timeout
+    original_use_real = client.use_real
+    client.use_real = False  # Always use mock for instant response
+    
+    try:
+        n = len(DATA)
+        tp = fp = fn = 0
+        cov_sum = 0.0
+        test_results = []
 
-    for item in DATA:
-        # Extract codes
-        pred_response = client.extract_codes(item["text"], item["doc_type"])
-        pred = pred_response.get("codes", [])
-        pred_set = {_norm(x.get("code", "")) for x in pred}
-        gold_set = {_norm(x) for x in item["gold_codes"]}
+        for item in DATA:
+            # Extract codes
+            pred_response = client.extract_codes(item["text"], item["doc_type"])
+            pred = pred_response.get("codes", [])
+            pred_set = {_norm(x.get("code", "")) for x in pred}
+            gold_set = {_norm(x) for x in item["gold_codes"]}
 
-        # Calculate per-item metrics
-        item_tp = len(pred_set & gold_set)
-        item_fp = len(pred_set - gold_set)
-        item_fn = len(gold_set - pred_set)
+            # Calculate per-item metrics
+            item_tp = len(pred_set & gold_set)
+            item_fp = len(pred_set - gold_set)
+            item_fn = len(gold_set - pred_set)
 
-        tp += item_tp
-        fp += item_fp
-        fn += item_fn
+            tp += item_tp
+            fp += item_fp
+            fn += item_fn
 
-        item_precision = item_tp / (item_tp + item_fp) if (item_tp + item_fp) else 0.0
-        item_recall = item_tp / (item_tp + item_fn) if (item_tp + item_fn) else 0.0
-        item_f1 = (
-            2 * item_precision * item_recall / (item_precision + item_recall)
-            if (item_precision + item_recall)
-            else 0.0
+            item_precision = item_tp / (item_tp + item_fp) if (item_tp + item_fp) else 0.0
+            item_recall = item_tp / (item_tp + item_fn) if (item_tp + item_fn) else 0.0
+            item_f1 = (
+                2 * item_precision * item_recall / (item_precision + item_recall)
+                if (item_precision + item_recall)
+                else 0.0
+            )
+
+            # Generate summary
+            summ = client.summarize(item["text"], item["doc_type"], pred)
+            s = (summ.get("summary") or "").lower()
+            got = sum(1 for f in item["gold_facts"] if f.lower() in s)
+            item_coverage = got / max(1, len(item["gold_facts"]))
+            cov_sum += item_coverage
+
+            # Store detailed results
+            test_results.append(
+                {
+                    "id": item["id"],
+                    "document_type": item["doc_type"],
+                    "query": item["text"],
+                    "expected_codes": item["gold_codes"],
+                    "predicted_codes": [c.get("code", "") for c in pred],
+                    "expected_facts": item["gold_facts"],
+                    "generated_summary": summ.get("summary", ""),
+                    "metrics": {
+                        "precision": round(item_precision, 2),
+                        "recall": round(item_recall, 2),
+                        "f1": round(item_f1, 2),
+                        "coverage": round(item_coverage, 2),
+                    },
+                }
+            )
+
+        # Calculate overall metrics
+        precision = tp / (tp + fp) if (tp + fp) else 0.0
+        recall = tp / (tp + fn) if (tp + fn) else 0.0
+        f1 = (
+            2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
         )
 
-        # Generate summary
-        summ = client.summarize(item["text"], item["doc_type"], pred)
-        s = (summ.get("summary") or "").lower()
-        got = sum(1 for f in item["gold_facts"] if f.lower() in s)
-        item_coverage = got / max(1, len(item["gold_facts"]))
-        cov_sum += item_coverage
-
-        # Store detailed results
-        test_results.append(
-            {
-                "id": item["id"],
-                "document_type": item["doc_type"],
-                "query": item["text"],
-                "expected_codes": item["gold_codes"],
-                "predicted_codes": [c.get("code", "") for c in pred],
-                "expected_facts": item["gold_facts"],
-                "generated_summary": summ.get("summary", ""),
-                "metrics": {
-                    "precision": round(item_precision, 2),
-                    "recall": round(item_recall, 2),
-                    "f1": round(item_f1, 2),
-                    "coverage": round(item_coverage, 2),
-                },
-            }
-        )
-
-    # Calculate overall metrics
-    precision = tp / (tp + fp) if (tp + fp) else 0.0
-    recall = tp / (tp + fn) if (tp + fn) else 0.0
-    f1 = (
-        2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
-    )
-
-    return {
-        "items": n,
-        "codes_precision": round(precision, 2),
-        "codes_recall": round(recall, 2),
-        "codes_f1": round(f1, 2),
-        "summary_coverage": round(cov_sum / n, 2),
-        "mode": "USE_CLAUDE_REAL=" + str(client.use_real),
-        "test_results": test_results,
-    }
+        return {
+            "items": n,
+            "codes_precision": round(precision, 2),
+            "codes_recall": round(recall, 2),
+            "codes_f1": round(f1, 2),
+            "summary_coverage": round(cov_sum / n, 2),
+            "mode": "USE_CLAUDE_REAL_FOR_EVAL=" + str(settings.use_claude_real_for_eval),
+            "test_results": test_results,
+        }
+    finally:
+        # Restore original setting
+        client.use_real = original_use_real

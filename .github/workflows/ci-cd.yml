@@ -190,3 +190,82 @@ jobs:
           fi
           
           echo "✅ Evaluation gate passed successfully!"
+
+      - name: Generate and Store Eval Results in S3
+        run: |
+          echo "🔄 Running comprehensive evaluation and storing results in S3..."
+          
+          # Wait for API to be fully ready
+          kubectl -n dev wait --for=condition=ready pod -l app=api --timeout=180s
+          
+          # Create Python script for eval
+          cat > /tmp/run_eval_and_upload.py <<'PYTHON_SCRIPT'
+          import requests
+          import json
+          import boto3
+          from datetime import datetime
+          import sys
+          
+          print("📊 Calling eval endpoint...")
+          try:
+              response = requests.get("http://api.dev.svc.cluster.local/eval/quick", timeout=300)
+              response.raise_for_status()
+              eval_results = response.json()
+              print(f"✓ Eval completed: {eval_results.get('items', 0)} test cases")
+          except Exception as e:
+              print(f"❌ Eval failed: {str(e)}")
+              sys.exit(1)
+          
+          # Add metadata
+          eval_results["metadata"] = {
+              "timestamp": datetime.utcnow().isoformat(),
+              "git_commit": "${{ github.sha }}",
+              "git_branch": "${{ github.ref_name }}",
+              "workflow_run_id": "${{ github.run_id }}",
+              "workflow_run_number": "${{ github.run_number }}",
+              "repository": "${{ github.repository }}"
+          }
+          
+          print("☁️  Uploading to S3...")
+          s3 = boto3.client("s3", region_name="ap-south-1")
+          
+          # Upload as latest
+          s3.put_object(
+              Bucket="med-docs-dev",
+              Key="eval-results/latest.json",
+              Body=json.dumps(eval_results, indent=2),
+              ContentType="application/json",
+              CacheControl="no-cache"
+          )
+          print("✓ Uploaded: s3://med-docs-dev/eval-results/latest.json")
+          
+          # Upload with commit SHA for history
+          commit_key = f"eval-results/${{ github.sha }}.json"
+          s3.put_object(
+              Bucket="med-docs-dev",
+              Key=commit_key,
+              Body=json.dumps(eval_results, indent=2),
+              ContentType="application/json"
+          )
+          print(f"✓ Uploaded: s3://med-docs-dev/{commit_key}")
+          
+          print("")
+          print("✅ Eval results stored successfully!")
+          print(f"   📈 Precision: {eval_results.get('codes_precision', 0)}")
+          print(f"   📈 Recall: {eval_results.get('codes_recall', 0)}")
+          print(f"   📈 F1 Score: {eval_results.get('codes_f1', 0)}")
+          print(f"   📈 Coverage: {eval_results.get('summary_coverage', 0)}")
+          PYTHON_SCRIPT
+          
+          # Run eval inside cluster
+          kubectl run eval-generator \
+            --namespace=dev \
+            --image=python:3.12-slim \
+            --restart=Never \
+            --rm \
+            -i \
+            --command -- bash -c \
+            "pip install requests boto3 --quiet && python - < /dev/stdin" \
+            < /tmp/run_eval_and_upload.py
+          
+          echo "✅ Eval results generation and upload complete!"

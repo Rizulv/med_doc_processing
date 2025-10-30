@@ -34,6 +34,9 @@ kind: Service
 metadata:
   name: web
   namespace: dev
+  annotations:
+    # Increase LoadBalancer idle timeout to 5 minutes (for slow eval endpoint)
+    service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "300"
 spec:
   type: LoadBalancer
   selector:

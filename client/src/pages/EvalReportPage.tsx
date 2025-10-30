@@ -175,15 +175,31 @@ export default function EvalReportPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["evalResults"],
     queryFn: fetchEvalResults,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    retry: 1,
   });
 
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <Skeleton className="h-12 w-64 mb-6" />
-        <Skeleton className="h-32 w-full mb-4" />
-        <Skeleton className="h-64 w-full mb-4" />
-        <Skeleton className="h-64 w-full" />
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="text-blue-900">Running Evaluation Tests...</CardTitle>
+            <CardDescription className="text-blue-700">
+              This may take 2-3 minutes as we process 15 test cases using Claude AI.
+              Please wait while we analyze medical documents.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-3/4" />
+            <div className="flex items-center gap-2 text-sm text-blue-600 mt-4">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <span>Processing test cases with Anthropic Claude API...</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -194,11 +210,31 @@ export default function EvalReportPage() {
         <Card className="border-destructive">
           <CardHeader>
             <CardTitle className="text-destructive">Error Loading Eval Results</CardTitle>
+            <CardDescription>
+              Failed to fetch evaluation data from the API
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {error instanceof Error ? error.message : "An unknown error occurred"}
-            </p>
+          <CardContent className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <p className="text-sm font-mono text-red-800">
+                {error instanceof Error ? error.message : "An unknown error occurred"}
+              </p>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p className="font-semibold mb-2">Possible causes:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>API endpoint not responding (check backend health)</li>
+                <li>Anthropic API key not configured or invalid</li>
+                <li>Network timeout (evaluation takes 2-3 minutes)</li>
+                <li>CORS or proxy configuration issue</li>
+              </ul>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Retry
+            </button>
           </CardContent>
         </Card>
       </div>

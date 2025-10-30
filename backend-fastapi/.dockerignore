@@ -1,0 +1,20 @@
+# Ignore Python venv and cache
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore environment files (secrets)
+.env
+*.env
+
+# Ignore IDE files
+.vscode
+.idea
+.DS_Store
+
+# Ignore local data
+local_storage/
+*.db
+*.db-journal

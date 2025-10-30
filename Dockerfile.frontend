@@ -1,0 +1,64 @@
+# Stage 1: Build
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+# Allow passing API base at build time (empty by default for production)
+ARG VITE_API_BASE_URL=
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+# Copy package files (root package.json contains frontend scripts)
+COPY package*.json ./
+
+# Install dependencies (using npm install instead of npm ci due to optional dependencies)
+RUN npm install --production=false
+
+# Copy rest of repository (client/ is the Vite root)
+COPY . .
+
+# Build frontend (uses vite.config.ts which sets root to client/)
+RUN npm run frontend:build
+
+# Stage 2: Serve
+FROM nginx:alpine
+
+# Copy built assets
+# Copy generated build output
+COPY --from=build /app/dist/public /usr/share/nginx/html
+
+# Create nginx config for SPA routing and API proxy
+RUN echo 'server { \
+    listen 80; \
+    \
+    # Frontend static files \
+    location / { \
+        root /usr/share/nginx/html; \
+        try_files $uri $uri/ /index.html; \
+    } \
+    \
+    # Proxy API requests to backend \
+    location /api/ { \
+        proxy_pass http://api/; \
+        proxy_http_version 1.1; \
+        proxy_set_header Upgrade $http_upgrade; \
+        proxy_set_header Connection "upgrade"; \
+        proxy_set_header Host $host; \
+        proxy_set_header X-Real-IP $remote_addr; \
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+        proxy_set_header X-Forwarded-Proto $scheme; \
+    } \
+    \
+    # Direct proxy for root API endpoints \
+    location ~ ^/(health|documents|classify|extract|summarize) { \
+        proxy_pass http://api$request_uri; \
+        proxy_http_version 1.1; \
+        proxy_set_header Host $host; \
+        proxy_set_header X-Real-IP $remote_addr; \
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+        proxy_set_header X-Forwarded-Proto $scheme; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

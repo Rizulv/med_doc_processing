@@ -1,0 +1,17 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+node_modules
+dist
+dist/public
+.env
+backend-fastapi/.env
+.DS_Store
+.git
+.gitignore
+npm-debug.log
+docker-compose.override.yml
+.idea
+.vscode

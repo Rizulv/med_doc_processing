@@ -1,0 +1,53 @@
+services:
+  backend:
+    build:
+      context: ./backend-fastapi
+      dockerfile: Dockerfile
+    image: med-doc-backend:local
+    container_name: med-doc-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend-fastapi/.env
+    environment:
+      # Override with .env values, fallback defaults
+      - USE_CLAUDE_REAL=${USE_CLAUDE_REAL:-false}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-3-5-sonnet-20241022}
+      - DB_URL=${DB_URL:-sqlite:////data/app.db}
+      - ALLOW_ORIGINS=${ALLOW_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      # S3 storage configuration (use local for dev, s3 for production)
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-med-docs-dev}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+      # Pass AWS credentials from host (for local S3 testing)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - backend-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      # Build from repo root (needs package.json, vite.config.ts, shared/, client/)
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # Browser connects to backend via localhost (not container name)
+        - VITE_API_BASE_URL=http://localhost:8000
+    image: med-doc-frontend:local
+    container_name: med-doc-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend-data:

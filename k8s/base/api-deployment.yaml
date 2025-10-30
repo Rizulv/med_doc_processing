@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: dev
+  labels:
+    app: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      serviceAccountName: api-sa
+      containers:
+      - name: api
+        image: 503837496832.dkr.ecr.ap-south-1.amazonaws.com/med-doc-backend:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: USE_CLAUDE_REAL
+          value: "true"
+        - name: CLAUDE_MODEL
+          value: "claude-sonnet-4-5"
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-secrets
+              key: ANTHROPIC_API_KEY
+        # Storage configuration
+        - name: STORAGE_BACKEND
+          value: "s3"
+        - name: S3_BUCKET_NAME
+          value: "med-docs-dev"
+        - name: AWS_REGION
+          value: "ap-south-1"
+        # Database configuration (SQLite - ephemeral for now)
+        - name: DB_URL
+          value: "sqlite:////data/app.db"
+        - name: ALLOW_ORIGINS
+          value: "http://web,http://localhost"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: data
+        emptyDir: {}  # SQLite storage (ephemeral - OK for testing)
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: dev
+spec:
+  selector:
+    app: api
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: ClusterIP

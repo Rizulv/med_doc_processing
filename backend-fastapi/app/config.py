@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     # ---- app/runtime ----
     db_url: str = "sqlite:///./app.db"
     storage_dir: str = "./local_storage"
+    storage_backend: str = "local"  # "local" or "s3"
+    s3_bucket_name: str = "med-docs-dev"
+    aws_region: str = "ap-south-1"
     allow_origins: str = "http://localhost:5173"
 
     # pydantic v2 settings

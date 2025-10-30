@@ -1,0 +1,131 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
+
+jobs:
+  # Build backend service
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build backend Docker image
+        working-directory: ./backend-fastapi
+        run: |
+          docker build -t ${{ env.ECR_REGISTRY }}/med-doc-backend:${{ github.sha }} .
+          docker tag ${{ env.ECR_REGISTRY }}/med-doc-backend:${{ github.sha }} \
+                     ${{ env.ECR_REGISTRY }}/med-doc-backend:latest
+
+      - name: Push backend to ECR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push ${{ env.ECR_REGISTRY }}/med-doc-backend:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/med-doc-backend:latest
+
+  # Build frontend service
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build frontend Docker image
+        # Build from repo root (needs package.json, vite.config.ts, etc.)
+        run: |
+          docker build \
+            -f Dockerfile.frontend \
+            --build-arg VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL || 'http://backend:8000' }} \
+            -t ${{ env.ECR_REGISTRY }}/med-doc-frontend:${{ github.sha }} \
+            .
+          docker tag ${{ env.ECR_REGISTRY }}/med-doc-frontend:${{ github.sha }} \
+                     ${{ env.ECR_REGISTRY }}/med-doc-frontend:latest
+
+      - name: Push frontend to ECR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push ${{ env.ECR_REGISTRY }}/med-doc-frontend:${{ github.sha }}
+          docker push ${{ env.ECR_REGISTRY }}/med-doc-frontend:latest
+
+  # Deploy to EKS (only on main branch)
+  deploy:
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name med-doc-dev --region ${{ env.AWS_REGION }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          # Update image tags in k8s manifests
+          kubectl -n dev set image deployment/api \
+            api=${{ env.ECR_REGISTRY }}/med-doc-backend:${{ github.sha }}
+          kubectl -n dev set image deployment/web \
+            web=${{ env.ECR_REGISTRY }}/med-doc-frontend:${{ github.sha }}
+          
+          # Wait for rollout
+          kubectl -n dev rollout status deployment/api --timeout=5m
+          kubectl -n dev rollout status deployment/web --timeout=5m
+
+      - name: Run evaluation gate
+        run: |
+          # Port-forward and run evals
+          kubectl -n dev port-forward svc/api 18000:80 &
+          PF_PID=$!
+          sleep 5
+          
+          # Install Python deps for eval
+          pip install requests
+          
+          # Run eval
+          python evals/run_eval.py --base-url http://127.0.0.1:18000 || EXIT_CODE=$?
+          
+          # Cleanup
+          kill $PF_PID || true
+          
+          # Fail if eval failed
+          if [ ! -z "$EXIT_CODE" ]; then
+            echo "Evaluation failed!"
+            exit $EXIT_CODE
+          fi

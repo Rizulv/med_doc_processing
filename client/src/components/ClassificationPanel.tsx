@@ -55,12 +55,12 @@ export function ClassificationPanel({ classification }: ClassificationPanelProps
           </p>
         </div>
         
-        {classification.evidence && classification.evidence.length > 0 && (
+        {classification.evidence && Array.isArray(classification.evidence) && classification.evidence.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-foreground">Supporting Evidence</h4>
             <div className="space-y-2">
               {classification.evidence.map((quote, idx) => (
-                <div 
+                <div
                   key={idx}
                   className="border-l-4 border-primary/40 pl-4 py-2 bg-card/50"
                 >

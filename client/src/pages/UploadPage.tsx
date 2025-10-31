@@ -121,12 +121,12 @@ export default function UploadPage() {
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold">ICD-10 Diagnostic Codes</h3>
                 <span className="text-sm text-muted-foreground">
-                  {result.results.codes.codes.length}{" "}
-                  {result.results.codes.codes.length === 1 ? "code" : "codes"} identified
+                  {result.results.codes?.codes?.length || 0}{" "}
+                  {(result.results.codes?.codes?.length || 0) === 1 ? "code" : "codes"} identified
                 </span>
               </div>
 
-              {result.results.codes.codes.length === 0 ? (
+              {!result.results.codes?.codes || result.results.codes.codes.length === 0 ? (
                 <Card>
                   <CardContent className="p-8 text-center">
                     <p className="text-sm text-muted-foreground">

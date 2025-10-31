@@ -8,6 +8,13 @@ type Props = {
   onChange: (v: DocTypeChoice) => void;
 };
 
+// Document type categories mapping
+const DOC_CATEGORIES = {
+  "Labs": ["COMPLETE BLOOD COUNT", "BASIC METABOLIC PANEL"],
+  "Imaging": ["X-RAY", "CT"],
+  "Clinical Docs": ["CLINICAL NOTE"]
+} as const;
+
 export default function DocTypeSelect({ value, onChange }: Props) {
   return (
     <div className="mb-6">
@@ -20,9 +27,24 @@ export default function DocTypeSelect({ value, onChange }: Props) {
         onChange={(e) => onChange(e.target.value as DocTypeChoice)}
       >
         <option value="AUTO">AUTO — let AI classify</option>
-        {DOCUMENT_TYPES.map((t) => (
-          <option key={t} value={t}>{t}</option>
-        ))}
+
+        <optgroup label="📋 Labs">
+          {DOC_CATEGORIES["Labs"].map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </optgroup>
+
+        <optgroup label="🏥 Imaging">
+          {DOC_CATEGORIES["Imaging"].map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </optgroup>
+
+        <optgroup label="📄 Clinical Docs">
+          {DOC_CATEGORIES["Clinical Docs"].map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </optgroup>
       </select>
       <p className="text-xs text-muted-foreground mt-1">
         Choosing a type can boost accuracy and skip classification later.

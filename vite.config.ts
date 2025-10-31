@@ -36,5 +36,31 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    proxy: {
+      "/eval": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/api": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/documents": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/classify": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/extract-codes": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/summarize": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+    },
   },
 });

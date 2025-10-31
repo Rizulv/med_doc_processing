@@ -10,10 +10,10 @@ interface UploadCardProps {
   accept?: string;
 }
 
-export function UploadCard({ 
-  onFileSelect, 
+export function UploadCard({
+  onFileSelect,
   isProcessing = false,
-  accept = ".pdf,.txt"
+  accept = ".pdf,.txt,.jpg,.jpeg,.png"
 }: UploadCardProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -114,11 +114,11 @@ export function UploadCard({
           </h3>
           
           <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-            Drop a PDF or TXT file here, or click to browse
+            Drop a file here, or click to browse
           </p>
-          
+
           <p className="text-xs text-muted-foreground">
-            Supported formats: PDF, TXT
+            Supported formats: PDF, TXT, JPG, PNG (for X-rays/CT scans)
           </p>
           
           <input

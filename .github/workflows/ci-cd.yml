@@ -173,6 +173,9 @@ jobs:
           
           chmod +x /tmp/run-eval-in-cluster.sh
           
+          # Clean up any leftover eval-runner pod from previous runs
+          kubectl delete pod eval-runner -n dev --ignore-not-found=true
+          
           # Run the eval script in a pod inside the cluster
           kubectl run eval-runner \
             --namespace=dev \
@@ -256,6 +259,9 @@ jobs:
           print(f"   📈 F1 Score: {eval_results.get('codes_f1', 0)}")
           print(f"   📈 Coverage: {eval_results.get('summary_coverage', 0)}")
           PYTHON_SCRIPT
+          
+          # Clean up any leftover eval-generator pod from previous runs
+          kubectl delete pod eval-generator -n dev --ignore-not-found=true
           
           # Run eval inside cluster with service account that has S3 access
           kubectl run eval-generator \

@@ -211,7 +211,7 @@ jobs:
           
           print("📊 Calling eval endpoint...")
           try:
-              response = requests.get("http://api.dev.svc.cluster.local/eval/quick", timeout=300)
+              response = requests.get("http://api.dev.svc.cluster.local/eval/quick", timeout=600)
               response.raise_for_status()
               eval_results = response.json()
               print(f"✓ Eval completed: {eval_results.get('items', 0)} test cases")

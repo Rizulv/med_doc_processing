@@ -92,3 +92,16 @@ export const summarizeRequestSchema = z.object({
   document_type: z.enum(DOCUMENT_TYPES).optional(),
   codes: z.array(icd10CodeSchema).optional(),
 });
+
+// User schemas
+export const userSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  password: z.string(),
+});
+
+export type User = z.infer<typeof userSchema>;
+
+export const insertUserSchema = userSchema.omit({ id: true });
+
+export type InsertUser = z.infer<typeof insertUserSchema>;

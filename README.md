@@ -1,275 +1,369 @@
-# MedicalDocAI — MVP
+# 🏥 Patient Medical Document Intelligence
 
-AI pipeline to analyze medical documents: **classify (5 types)**, **extract ICD-10 codes with evidence**, and **generate a provider-facing summary**.  
-Stack: **FastAPI** (backend) + **React/TypeScript** (client). Claude can be toggled on/off.
+**AI-powered medical document analysis with patient-friendly features** - Built with Google Gemini (Free Tier)
 
----
+## 🌟 What Makes This Different?
 
-## Table of Contents
-- [Repo Structure](#repo-structure)
-- [Document Types](#document-types)
-- [1) Backend — Setup & Run](#1-backend--setup--run)
-- [2) Client — Setup & Run](#2-client--setup--run)
-- [3) Evals — What & Why](#3-evals--what--why)
-- [4) Testing with Real Claude](#4-testing-with-real-claude)
-- [5) Sample Test Documents](#5-sample-test-documents)
-- [6) Common Issues](#6-common-issues)
-- [7) Minimal Team Workflow](#7-minimal-team-workflow)
-- [8) Next Steps](#8-next-steps)
+Unlike traditional provider-facing tools, this is built FOR PATIENTS:
+
+- **🔄 Smart Medical Translator** - Convert complex jargon to simple language (ELI5 mode)
+- **💊 Medication Intelligence** - Extract medications + check interactions automatically
+- **✅ Action Items Generator** - Get clear next steps: "Schedule follow-up in 3 months"
+- **💬 Document Chat** - Ask questions: "What does my cholesterol mean?"
+- **📊 Health Insights** - Understand your lab results with explanations
+- **🌍 Multi-language** - Hindi, Spanish support (coming soon)
+- **🔒 Privacy-First** - No data storage, runs locally
 
 ---
 
-## Repo Structure
+## 🚀 Quick Start (5 minutes)
 
-```
-MedicalDocAI/
-├─ README.md
-├─ backend-fastapi/
-│  ├─ requirements.txt
-│  ├─ .env                  # create manually; values shared separately
-│  └─ app/
-│     ├─ main.py
-│     ├─ config.py
-│     ├─ db/
-│     │  ├─ database.py
-│     │  ├─ models.py
-│     │  └─ crud.py
-│     ├─ routes/
-│     │  ├─ health.py
-│     │  ├─ classify.py
-│     │  ├─ extract_codes.py
-│     │  ├─ summarize.py
-│     │  ├─ pipeline.py      # previously documents.py
-│     │  └─ eval.py
-│     └─ services/
-│        ├─ anthropic_client.py
-│        ├─ text_extract.py
-│        └─ storage_local.py
-├─ client/                   # React + Vite app
-│  ├─ package.json
-│  └─ src/...
-└─ evals/
-   ├─ datasets/
-   │  └─ synthetic_v1.json
-   └─ run_eval.py
-```
+### 1. Get Your FREE Gemini API Key
+
+**No credit card required!** Free tier includes:
+- ✅ 15 requests per minute
+- ✅ 1 million tokens per minute
+- ✅ Perfect for testing and personal use
+
+**Steps:**
+1. Go to: [https://makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
+2. Sign in with your Google account
+3. Click **"Create API Key"**
+4. Copy your key (starts with `AIza...`)
+
+**🎯 Paste your API key here:** `backend-fastapi/.env` (see step 2 below)
 
 ---
 
-## Document Types
-
-Exact strings returned by classification:
-
-- `COMPLETE BLOOD COUNT`
-- `BASIC METABOLIC PANEL`
-- `X-RAY`
-- `CT`
-- `CLINICAL NOTE`
-
----
-
-## 1) Backend — Setup & Run
-
-**Prereqs:** Python **3.12**
+### 2. Backend Setup
 
 ```bash
 cd backend-fastapi
+
+# Create virtual environment (Python 3.10+)
 python -m venv .venv
 
-# Windows PowerShell
-. .venv/Scripts/activate
+# Activate it
+# Windows:
+.venv\Scripts\activate
+# Mac/Linux:
+source .venv/bin/activate
 
-# macOS/Linux
-# source .venv/bin/activate
-
+# Install dependencies
 pip install -r requirements.txt
+
+# Create .env file
+cp .env.example .env
+
+# 🔑 IMPORTANT: Edit .env and paste your Gemini API key
+nano .env  # or use any text editor
 ```
 
-Create `backend-fastapi/.env` (values shared separately). Example:
-
+**Your `.env` file should look like:**
 ```env
+GEMINI_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXX  # Your key here
+GEMINI_MODEL=gemini-1.5-flash
+USE_GEMINI=true
 DB_URL=sqlite:///./app.db
+STORAGE_DIR=./local_storage
 ALLOW_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-
-# LLM
-USE_CLAUDE_REAL=true
-ANTHROPIC_API_KEY=sk-********
-# Prefer latest; if your org doesn't have it, use the dated model below
-CLAUDE_MODEL=claude-4-5
 ```
 
-Run the API:
-
+**Run the backend:**
 ```bash
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Open Swagger docs: http://127.0.0.1:8000/docs
-
-**Core endpoints** (paths are defined in routers; these are the usual defaults):
-
-- `POST /classify`
-- `POST /extract-codes`
-- `POST /summarize`
-- `POST /documents`  ← pipeline upload/process (if you renamed to `/pipeline`, use that)
-- `GET  /documents/{id}`  ← fetch stored result
-- `GET  /eval/quick`      ← tiny smoke metrics
-
-Sample cURL:
-
-```bash
-curl -X POST http://127.0.0.1:8000/classify   -H "Content-Type: application/json"   -d '{"document_text":"CBC: WBC 12.8, Hb 9.2, Platelets 240"}'
-```
+✅ Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) - You should see the API docs!
 
 ---
 
-## 2) Client — Setup & Run
-
-**Prereqs:** Node **20+**
+### 3. Frontend Setup
 
 ```bash
 cd client
+
+# Install dependencies (Node 18+)
 npm install
+
+# Run dev server
 npm run dev
-# open http://localhost:5173
 ```
 
-- Select a document type from the dropdown (or `AUTO`).
-- Upload a `.txt` or `.pdf`.
-- View **classification**, **ICD-10 codes** (with evidence + confidence), and **summary**.
-
-If your backend origin differs, set `VITE_API_BASE` in `client/.env`:
-
-```env
-VITE_API_BASE=http://127.0.0.1:8000
-```
-
-Sample docs for testing live in `test_docs/`.
+✅ Open [http://localhost:5173](http://localhost:5173) - You should see the app!
 
 ---
 
-## 3) Evals — What & Why
+## 🎯 Features Guide
 
-**What:** dataset-level checks to measure prompt quality and extraction accuracy over labeled examples.  
-**Why:** to iterate prompts reliably. You tweak prompt → run eval → see precision/recall/F1 and summary coverage change.
+### 1. **Document Analysis** (Core)
+- Upload medical documents (PDF, TXT)
+- Auto-classify: CBC, BMP, X-Ray, CT, Clinical Note
+- Extract ICD-10 codes with evidence
+- Generate patient-friendly summary
 
-Quick smoke metrics:
-
+### 2. **🔄 Medical Translator** (NEW!)
 ```bash
-# returns small JSON metrics from a tiny labeled set
-curl http://127.0.0.1:8000/eval/quick
+POST /api/translate
+{
+  "document_text": "Patient has leukocytosis...",
+  "target_language": "simple"  # or "hindi", "spanish"
+}
 ```
+**Returns:** Simple explanation of medical terms
 
-Programmatic runner:
-
+### 3. **💊 Medication Intelligence** (NEW!)
 ```bash
-cd evals
-python run_eval.py --base-url http://127.0.0.1:8000   --dataset evals/datasets/synthetic_v1.json   --mode with_hint
+# Extract medications from document
+POST /api/extract-medications
+{
+  "document_text": "Patient on Metformin 500mg twice daily..."
+}
+
+# Check drug interactions
+POST /api/check-interactions
+{
+  "medications": ["Metformin", "Insulin", "Aspirin"]
+}
 ```
 
-**Modes:**
-- `with_hint`: simulates the user selecting type in the UI (classification skipped).
-- `classify_only`: calls `/classify` and reports classification accuracy.
+### 4. **✅ Action Items Generator** (NEW!)
+```bash
+POST /api/action-items
+{
+  "document_text": "Follow up in 3 months. Repeat CBC.",
+  "codes": [...]
+}
+```
+**Returns:**
+- Action items: ["Schedule follow-up in 3 months"]
+- Questions: ["Ask doctor about elevated WBC"]
+- Reminders: ["Bring previous test results"]
+- Urgency: "routine" | "urgent" | "emergency"
 
-**UI vs Evals**
-- UI: per-document results for a single upload.
-- Evals: metrics across a labeled set to guide prompt improvements.
+### 5. **💬 Document Chat** (NEW!)
+```bash
+POST /api/chat
+{
+  "document_text": "Your lab report here...",
+  "question": "What does my cholesterol result mean?",
+  "conversation_history": []
+}
+```
+**Ask anything:**
+- "Should I be worried about the elevated WBC?"
+- "Explain my X-ray findings in simple terms"
+- "What foods should I avoid based on this report?"
 
 ---
 
-## 4) Testing with Real Claude
+## 📚 API Endpoints
 
-`.env` example above uses `USE_CLAUDE_REAL=true`.
+### Core Features
+- `POST /classify` - Classify document type
+- `POST /extract-codes` - Extract ICD-10 codes
+- `POST /summarize` - Generate summary
+- `POST /documents` - Full pipeline (upload → analyze)
+- `GET /documents/{id}` - Retrieve results
 
-Model names:
-- Prefer: `claude-4-5`
-- If you get “model not found (404)”, try `claude-4-5-latest`
+### Patient-Facing Features (NEW!)
+- `POST /api/translate` - Translate medical jargon
+- `POST /api/action-items` - Extract action items
+- `POST /api/extract-medications` - Extract medications
+- `POST /api/check-interactions` - Check drug interactions
+- `POST /api/chat` - Chat with your document
 
-Prompt caching is configured with **ephemeral** cache blocks only (no `ttl_seconds`).
-
-Known-good versions:
-
-```text
-anthropic==0.40.0
-httpx==0.27.2
-pydantic-settings>=2.3
-```
+### Evaluation
+- `GET /eval/quick` - Quick eval metrics
 
 ---
 
-## 5) Sample Test Documents
+## 🧪 Testing with Sample Documents
 
-Save as `.txt` and upload:
-
-**cbc_demo.txt**
+Create a test file `test_cbc.txt`:
 ```
 CBC Report: WBC 13.2 x10^3/µL (elevated), Hgb 14.1 g/dL, Platelets 250 x10^3/µL.
 Impression: leukocytosis.
 ```
 
-**bmp_demo.txt**
-```
-Basic Metabolic Panel: Sodium 138 mmol/L, Potassium 3.0 mmol/L (low),
-Chloride 101, BUN 22 mg/dL, Creatinine 1.5 mg/dL.
-```
-
-**xray_demo.txt**
-```
-Chest X-ray: Right lower lobe airspace opacity consistent with pneumonia.
-No pleural effusion.
-```
-
-**ct_demo.txt**
-```
-CT Head (non-contrast): No acute hemorrhage.
-Chronic lacunar infarct in left basal ganglia.
-```
-
-**note_demo.txt**
-```
-52-year-old with type 2 diabetes; HbA1c 8.4%.
-On metformin. Complains of burning feet suggestive of neuropathy.
+Upload it through the UI or use cURL:
+```bash
+curl -X POST http://127.0.0.1:8000/classify \
+  -H "Content-Type: application/json" \
+  -d '{"document_text":"CBC Report: WBC 13.2 elevated..."}'
 ```
 
 ---
 
-## 6) Common Issues
+## 🌐 Deployment
 
-- **404 model not found**  
-  Your org may not have `claude-3-5-sonnet-latest`. Switch to `claude-3-5-sonnet-20241022` or use `claude-4-5(-latest)`.
+### Option 1: Frontend on Netlify (Free)
 
-- **Prompt cache errors (extra inputs/TTL)**  
-  Only send `{"cache_control":{"type":"ephemeral"}}`. Do not add `ttl_seconds`.
+```bash
+cd client
 
-- **Proxies error**  
-  Use `anthropic==0.40.0` and `httpx==0.27.2`. Don’t pass a `proxies` arg to the SDK.
+# Build for production
+npm run build
 
-- **CORS**  
-  Add your client origins to `ALLOW_ORIGINS` in backend `.env`.
+# Deploy to Netlify
+# 1. Install Netlify CLI: npm install -g netlify-cli
+# 2. Login: netlify login
+# 3. Deploy: netlify deploy --prod
+```
+
+### Option 2: Backend on Railway/Render (Free)
+
+**Railway:**
+1. Go to [railway.app](https://railway.app)
+2. Connect GitHub repo
+3. Add `GEMINI_API_KEY` environment variable
+4. Deploy!
+
+**Render:**
+1. Go to [render.com](https://render.com)
+2. New Web Service → Connect repo
+3. Build: `pip install -r backend-fastapi/requirements.txt`
+4. Start: `uvicorn app.main:app --host 0.0.0.0`
+5. Add `GEMINI_API_KEY` environment variable
 
 ---
 
-## 7) Minimal Team Workflow
+## 🎨 Frontend Customization
 
-1. Pull repo  
-2. Create `backend-fastapi/.env` (values provided privately)  
-3. Start backend → open Swagger → sanity-check endpoints  
-4. Start client → upload a sample → verify all panels  
-5. Run `GET /eval/quick` → capture baseline metrics  
-6. Improve prompts → re-run evals → document metric deltas
+The client uses:
+- **React** + **Vite** + **TypeScript**
+- **TailwindCSS** for styling
+- **Chart.js** for visualizations (add this for health timeline!)
+
+To add health timeline feature:
+```bash
+cd client
+npm install chart.js react-chartjs-2
+```
+
+Then create a component to visualize lab results over time.
 
 ---
 
-## 8) Next Steps
+## 🔐 Security & Privacy
 
-- Add Docker for backend and client (+ optional `docker-compose.yml`)
-- Expand eval dataset (≥10 docs per type) and keep a hold-out set
-- Track prompt versions and metrics in `docs/`
-- Wire S3 for file storage when moving off local dev
-- Add CI later (GitHub Actions) once Docker is in
+- ✅ No data storage by default (all processing in-memory)
+- ✅ Client-side file processing where possible
+- ✅ CORS configured for local dev
+- ✅ Gemini API calls are encrypted (HTTPS)
+- ⚠️ For production: Add authentication, rate limiting, input validation
 
-## CI/CD Status
+---
 
-GitHub Actions automated deployment is now enabled.
+## 🛠️ Tech Stack
 
-# CI/CD is now fully configured with EKS access
+**Backend:**
+- FastAPI (Python)
+- Google Gemini API (gemini-1.5-flash)
+- SQLAlchemy (optional DB)
+- pypdf (PDF processing)
+
+**Frontend:**
+- React + Vite + TypeScript
+- TailwindCSS
+
+**Open Source Tools Used:**
+- pypdf for PDF extraction (free)
+- SQLite for local storage (free)
+- Chart.js for visualizations (free)
+
+---
+
+## 📖 How to Use Open Source Alternatives
+
+### For Voice-to-Text:
+```bash
+# Use browser Web Speech API (free, no API key)
+# Or install OpenAI Whisper locally (free, runs on your machine)
+pip install openai-whisper
+```
+
+### For PDF Generation:
+```bash
+pip install fpdf2  # Free, open source
+```
+
+### For Advanced RAG (Document Chat):
+```bash
+pip install langchain chromadb  # Already in requirements.txt!
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### "Module not found: google.generativeai"
+```bash
+pip install google-generativeai
+```
+
+### "Invalid API key"
+- Check your `.env` file has `GEMINI_API_KEY=AIza...`
+- Make sure there are no spaces or quotes around the key
+- Verify your key at [Google AI Studio](https://makersuite.google.com)
+
+### "CORS error"
+- Make sure backend is running on port 8000
+- Check `ALLOW_ORIGINS` in `.env` includes your frontend URL
+
+### "Gemini quota exceeded"
+Free tier limits:
+- 15 requests/minute
+- 1M tokens/minute
+
+Solution: Wait a minute or upgrade to paid tier (still very cheap!)
+
+---
+
+## 🎯 Roadmap
+
+- [ ] Add voice input (Web Speech API)
+- [ ] Health timeline visualization (Chart.js)
+- [ ] Export to PDF reports
+- [ ] Multi-language support (Hindi, Spanish)
+- [ ] Mobile app (React Native)
+- [ ] Offline mode (TensorFlow.js for local inference)
+
+---
+
+## 🤝 Contributing
+
+This is a personal project, but feel free to:
+1. Fork the repo
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+---
+
+## 📝 License
+
+MIT License - Feel free to use for personal or commercial projects!
+
+---
+
+## 🙏 Acknowledgments
+
+Built with:
+- Google Gemini API (free tier)
+- FastAPI framework
+- React + Vite
+- Open source Python libraries
+
+---
+
+## 📞 Support
+
+- **Issues:** [GitHub Issues](https://github.com/Rizulv/med_doc_processing/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/Rizulv/med_doc_processing/discussions)
+
+---
+
+**Made with ❤️ for patients who want to understand their medical documents**
+
+**🔑 Don't forget to get your free Gemini API key:** [https://makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)

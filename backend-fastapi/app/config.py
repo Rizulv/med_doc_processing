@@ -2,19 +2,14 @@ from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    # ---- Anthropic / LLM ----
-    anthropic_api_key: str = ""
-    claude_model: str = "claude-3-5-sonnet-20240620"  # pin to a real model id
-    use_claude_real: bool = False
-    use_claude_real_for_eval: bool = False  # Separate setting for eval endpoint (avoid timeout)
-    prompt_cache_ttl_seconds: Optional[int] = None  # NEW: if set, we cache the long prompt
+    # ---- Google Gemini / LLM ----
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-1.5-flash"  # Free tier model
+    use_gemini: bool = True
 
     # ---- app/runtime ----
     db_url: str = "sqlite:///./app.db"
     storage_dir: str = "./local_storage"
-    storage_backend: str = "local"  # "local" or "s3"
-    s3_bucket_name: str = "med-docs-dev"
-    aws_region: str = "ap-south-1"
     allow_origins: str = "http://localhost:5173"
 
     # pydantic v2 settings

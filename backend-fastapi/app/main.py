@@ -6,10 +6,15 @@ from app.config import settings
 from app.db.database import init_db
 from app.routes import health, pipeline, classify, extract_codes, summarize
 from app.routes.eval import router as eval_router
+from app.routes.translator import router as translator_router
+from app.routes.action_items import router as action_items_router
+from app.routes.medications import router as medications_router
+from app.routes.chat import router as chat_router
 
 app = FastAPI(
-    title="Medical Doc AI",
-    version="0.1.0",
+    title="Patient Medical Document Intelligence",
+    description="AI-powered medical document analysis with patient-friendly features",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -35,9 +40,16 @@ def _on_startup():
     init_db()
 
 # ---- Routers ----
+# Core features
 app.include_router(health.router, tags=["health"])
 app.include_router(classify.router, tags=["classify"])
 app.include_router(extract_codes.router, tags=["codes"])
 app.include_router(summarize.router, tags=["summary"])
 app.include_router(pipeline.router, tags=["pipeline"])
 app.include_router(eval_router)  # /eval/*
+
+# Innovative patient-facing features
+app.include_router(translator_router, tags=["translator"], prefix="/api")
+app.include_router(action_items_router, tags=["action-items"], prefix="/api")
+app.include_router(medications_router, tags=["medications"], prefix="/api")
+app.include_router(chat_router, tags=["chat"], prefix="/api")

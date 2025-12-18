@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
-from app.services.anthropic_client import client
+from app.services.gemini_client import client
 from app.config import settings
 
 router = APIRouter(prefix="/eval", tags=["eval"])

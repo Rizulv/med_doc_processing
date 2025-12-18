@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
-from app.services.anthropic_client import client
+from app.services.gemini_client import client
 
 router = APIRouter()
 

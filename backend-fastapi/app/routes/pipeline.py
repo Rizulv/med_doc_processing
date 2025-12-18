@@ -5,7 +5,7 @@ from app.db.database import get_db
 from app.db import crud
 from app.services.text_extract import extract_text_from_upload
 from app.services.storage_local import storage
-from app.services.anthropic_client import client
+from app.services.gemini_client import client
 
 router = APIRouter()
 

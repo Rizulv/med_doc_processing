@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from app.services.gemini_client import client
+from app.services.claude_client import client
 
 router = APIRouter()
 
@@ -25,9 +25,9 @@ async def chat_with_document(request: ChatRequest):
 
     Returns: {answer, confidence, sources: [quoted text from document]}
     """
-    if not client.use_gemini:
+    if not client.use_claude:
         return {
-            "answer": "Chat feature requires Gemini API to be configured.",
+            "answer": "Chat feature requires Claude API to be configured.",
             "confidence": 0.0,
             "sources": []
         }

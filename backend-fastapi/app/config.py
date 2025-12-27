@@ -2,10 +2,10 @@ from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    # ---- Google Gemini / LLM ----
-    gemini_api_key: str = ""
-    gemini_model: str = "gemini-1.5-flash"  # Free tier model
-    use_gemini: bool = True
+    # ---- Anthropic Claude / LLM ----
+    anthropic_api_key: str = ""
+    claude_model: str = "claude-sonnet-4-5-20250929"  # Claude Sonnet 4.5
+    use_claude: bool = True
 
     # ---- app/runtime ----
     db_url: str = "sqlite:///./app.db"
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False,
-        extra="ignore",            # NEW: ignore any other unknown env keys
+        extra="ignore",            # ignore any other unknown env keys
     )
 
     @property

@@ -1,31 +1,51 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Activity, ClipboardCheck, FolderOpen } from "lucide-react";
 
 export function AppHeader() {
   const [location] = useLocation();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between max-w-7xl">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur">
+      <div className="container mx-auto px-6 h-16 flex items-center justify-between max-w-7xl">
         <Link href="/">
-          <div className="flex items-center gap-2 cursor-pointer hover-elevate px-2 py-1 rounded-md transition-colors">
-            <div className="p-1.5 bg-primary rounded">
-              <Activity className="w-5 h-5 text-primary-foreground" />
+          <div className="flex items-center gap-3 cursor-pointer group">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                <span className="text-white font-bold text-sm">MD</span>
+              </div>
+              <span className="font-semibold text-xl text-slate-900 group-hover:text-blue-600 transition-colors">
+                Medical Doc Intelligence
+              </span>
             </div>
-            <span className="font-semibold text-lg">Medical Doc AI</span>
           </div>
         </Link>
 
-        <nav className="flex items-center gap-2">
-          <Link href="/eval-report">
+        <nav className="flex items-center gap-1">
+          <Link href="/upload">
             <Button
-              variant={location === "/eval-report" ? "default" : "ghost"}
+              variant={location === "/upload" ? "default" : "ghost"}
               size="default"
-              data-testid="link-eval-report"
+              className="font-medium"
             >
-              <ClipboardCheck className="w-4 h-4 mr-2" />
-              Eval Test Report
+              Upload
+            </Button>
+          </Link>
+          <Link href="/about">
+            <Button
+              variant={location === "/about" ? "default" : "ghost"}
+              size="default"
+              className="font-medium"
+            >
+              Features
+            </Button>
+          </Link>
+          <Link href="/demo">
+            <Button
+              variant={location === "/demo" ? "default" : "ghost"}
+              size="default"
+              className="font-medium"
+            >
+              Demo
             </Button>
           </Link>
           <Link href="/documents">
@@ -33,9 +53,19 @@ export function AppHeader() {
               variant={location.startsWith("/documents") ? "default" : "ghost"}
               size="default"
               data-testid="link-documents"
+              className="font-medium"
             >
-              <FolderOpen className="w-4 h-4 mr-2" />
               Documents
+            </Button>
+          </Link>
+          <Link href="/eval-report">
+            <Button
+              variant={location === "/eval-report" ? "default" : "ghost"}
+              size="default"
+              data-testid="link-eval-report"
+              className="font-medium"
+            >
+              Evaluation
             </Button>
           </Link>
         </nav>

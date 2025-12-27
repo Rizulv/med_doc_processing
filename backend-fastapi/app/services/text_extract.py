@@ -75,25 +75,9 @@ def extract_text_from_image(file_data: io.BytesIO, file_ext: str) -> str:
     Returns:
         str: Extracted medical findings text
     """
-    from app.services.anthropic_client import client
-
-    try:
-        # Read image data
-        image_bytes = file_data.read()
-
-        # Convert to base64
-        image_base64 = base64.standard_b64encode(image_bytes).decode("utf-8")
-
-        # Determine media type
-        media_type = f"image/{file_ext if file_ext != 'jpg' else 'jpeg'}"
-
-        # Use Claude Vision API to analyze the image
-        findings_text = client.analyze_medical_image(image_base64, media_type)
-
-        return findings_text
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Failed to extract text from image: {str(e)}"
-        )
+    # Note: Claude Vision support can be added here
+    # For now, we'll return an error message
+    raise HTTPException(
+        status_code=400,
+        detail="Image analysis is not yet supported. Please upload PDF or TXT files only. Image support coming soon with Claude Vision!"
+    )

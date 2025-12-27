@@ -5,7 +5,7 @@ from app.db.database import get_db
 from app.db import crud
 from app.services.text_extract import extract_text_from_upload
 from app.services.storage_local import storage
-from app.services.gemini_client import client
+from app.services.claude_client import client
 
 router = APIRouter()
 
@@ -50,19 +50,20 @@ async def upload_document(
         raise HTTPException(status_code=400, detail=f"Failed to process file: {str(e)}")
 
     # 2) Validate that this is a medical document (not CV, resume, etc.)
-    if run_pipeline:
-        try:
-            is_valid = client.validate_medical_document(document_text)
-            if not is_valid:
-                raise HTTPException(
-                    status_code=400,
-                    detail="This does not appear to be a medical document. Please upload a valid medical document (lab report, imaging report, or clinical note)."
-                )
-        except HTTPException:
-            raise
-        except Exception as e:
-            # If validation fails for technical reasons, allow the document to proceed
-            pass
+    # DISABLED to save API quota (validation uses 1 Claude API call)
+    # Each upload uses 3 calls: classify + extract_codes + summarize
+    # if run_pipeline:
+    #     try:
+    #         is_valid = client.validate_medical_document(document_text)
+    #         if not is_valid:
+    #             raise HTTPException(
+    #                 status_code=400,
+    #                 detail="This does not appear to be a medical document."
+    #             )
+    #     except HTTPException:
+    #         raise
+    #     except Exception as e:
+    #         pass
 
     # Reset file pointer for storage
     await file.seek(0)

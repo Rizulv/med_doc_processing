@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-from app.services.gemini_client import client
+from app.services.claude_client import client
 
 router = APIRouter()
 

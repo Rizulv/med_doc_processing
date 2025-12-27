@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List
-from app.services.gemini_client import client
+from app.services.claude_client import client
 
 router = APIRouter()
 
@@ -22,8 +22,8 @@ async def extract_medications(request: MedicationRequest):
 
     Returns: {medications: [{name, dosage, frequency, instructions}]}
     """
-    if not client.use_gemini:
-        return {"medications": [], "error": "Gemini API not configured"}
+    if not client.use_claude:
+        return {"medications": [], "error": "Claude API not configured"}
 
     prompt = """Extract ALL medications mentioned in this document.
 
@@ -59,8 +59,8 @@ async def check_medication_interactions(request: InteractionCheckRequest):
 
     Returns: {interactions: [{severity, description, medications_involved}], warnings: []}
     """
-    if not client.use_gemini:
-        return {"interactions": [], "warnings": [], "error": "Gemini API not configured"}
+    if not client.use_claude:
+        return {"interactions": [], "warnings": [], "error": "Claude API not configured"}
 
     meds_text = ", ".join(request.medications)
     prompt = f"""Check for drug interactions between these medications: {meds_text}

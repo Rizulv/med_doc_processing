@@ -1,6 +1,6 @@
 # 🏥 Patient Medical Document Intelligence
 
-**AI-powered medical document analysis with patient-friendly features** - Built with Google Gemini (Free Tier)
+**AI-powered medical document analysis with patient-friendly features** - Built with Claude Sonnet 4.5 (Anthropic)
 
 ## 🌟 What Makes This Different?
 
@@ -18,18 +18,13 @@ Unlike traditional provider-facing tools, this is built FOR PATIENTS:
 
 ## 🚀 Quick Start (5 minutes)
 
-### 1. Get Your FREE Gemini API Key
-
-**No credit card required!** Free tier includes:
-- ✅ 15 requests per minute
-- ✅ 1 million tokens per minute
-- ✅ Perfect for testing and personal use
+### 1. Get Your Claude API Key
 
 **Steps:**
-1. Go to: [https://makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
-2. Sign in with your Google account
-3. Click **"Create API Key"**
-4. Copy your key (starts with `AIza...`)
+1. Go to: [https://console.anthropic.com/](https://console.anthropic.com/)
+2. Sign up or log in to your account
+3. Navigate to **"API Keys"** section
+4. Click **"Create Key"** and copy it (starts with `sk-ant-...`)
 
 **🎯 Paste your API key here:** `backend-fastapi/.env` (see step 2 below)
 
@@ -55,15 +50,15 @@ pip install -r requirements.txt
 # Create .env file
 cp .env.example .env
 
-# 🔑 IMPORTANT: Edit .env and paste your Gemini API key
+# 🔑 IMPORTANT: Edit .env and paste your Claude API key
 nano .env  # or use any text editor
 ```
 
 **Your `.env` file should look like:**
 ```env
-GEMINI_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXX  # Your key here
-GEMINI_MODEL=gemini-1.5-flash
-USE_GEMINI=true
+ANTHROPIC_API_KEY=sk-ant-XXXXXXXXXXXXXXXXXXXXXXXX  # Your key here
+CLAUDE_MODEL=claude-sonnet-4-5-20250929
+USE_CLAUDE=true
 DB_URL=sqlite:///./app.db
 STORAGE_DIR=./local_storage
 ALLOW_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
@@ -216,7 +211,7 @@ npm run build
 **Railway:**
 1. Go to [railway.app](https://railway.app)
 2. Connect GitHub repo
-3. Add `GEMINI_API_KEY` environment variable
+3. Add `ANTHROPIC_API_KEY` environment variable
 4. Deploy!
 
 **Render:**
@@ -224,7 +219,7 @@ npm run build
 2. New Web Service → Connect repo
 3. Build: `pip install -r backend-fastapi/requirements.txt`
 4. Start: `uvicorn app.main:app --host 0.0.0.0`
-5. Add `GEMINI_API_KEY` environment variable
+5. Add `ANTHROPIC_API_KEY` environment variable
 
 ---
 
@@ -250,7 +245,7 @@ Then create a component to visualize lab results over time.
 - ✅ No data storage by default (all processing in-memory)
 - ✅ Client-side file processing where possible
 - ✅ CORS configured for local dev
-- ✅ Gemini API calls are encrypted (HTTPS)
+- ✅ Claude API calls are encrypted (HTTPS)
 - ⚠️ For production: Add authentication, rate limiting, input validation
 
 ---
@@ -259,7 +254,7 @@ Then create a component to visualize lab results over time.
 
 **Backend:**
 - FastAPI (Python)
-- Google Gemini API (gemini-1.5-flash)
+- Anthropic Claude API (claude-sonnet-4-5-20250929)
 - SQLAlchemy (optional DB)
 - pypdf (PDF processing)
 
@@ -297,26 +292,22 @@ pip install langchain chromadb  # Already in requirements.txt!
 
 ## 🐛 Troubleshooting
 
-### "Module not found: google.generativeai"
+### "Module not found: anthropic"
 ```bash
-pip install google-generativeai
+pip install anthropic
 ```
 
 ### "Invalid API key"
-- Check your `.env` file has `GEMINI_API_KEY=AIza...`
+- Check your `.env` file has `ANTHROPIC_API_KEY=sk-ant-...`
 - Make sure there are no spaces or quotes around the key
-- Verify your key at [Google AI Studio](https://makersuite.google.com)
+- Verify your key at [Anthropic Console](https://console.anthropic.com)
 
 ### "CORS error"
 - Make sure backend is running on port 8000
 - Check `ALLOW_ORIGINS` in `.env` includes your frontend URL
 
-### "Gemini quota exceeded"
-Free tier limits:
-- 15 requests/minute
-- 1M tokens/minute
-
-Solution: Wait a minute or upgrade to paid tier (still very cheap!)
+### "Rate limit exceeded"
+Claude API has rate limits based on your tier. Check your usage at the Anthropic Console.
 
 ---
 
@@ -350,7 +341,7 @@ MIT License - Feel free to use for personal or commercial projects!
 ## 🙏 Acknowledgments
 
 Built with:
-- Google Gemini API (free tier)
+- Anthropic Claude API (Sonnet 4.5)
 - FastAPI framework
 - React + Vite
 - Open source Python libraries
@@ -366,4 +357,4 @@ Built with:
 
 **Made with ❤️ for patients who want to understand their medical documents**
 
-**🔑 Don't forget to get your free Gemini API key:** [https://makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
+**🔑 Don't forget to get your Claude API key:** [https://console.anthropic.com/](https://console.anthropic.com/)

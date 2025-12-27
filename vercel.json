@@ -1,5 +1,5 @@
 {
   "framework": "vite",
   "buildCommand": "cd client && npm install && npm run frontend:build",
-  "outputDirectory": "client/dist"
+  "outputDirectory": "dist/public"
 }
